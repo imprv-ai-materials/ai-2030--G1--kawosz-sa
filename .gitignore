@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Project-root Python tooling — Poetry venv + caches now live here (see pyproject.toml).
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.coverage
+coverage/
+dist/
+_volumes/
+.deepeval
+.pnpm-store
+.vscode
+
+# Dataset annotator (/.annotator) — backups + atomic-write temp files
+*.jsonl.bak
+*.json.bak
+*.jsonl.tmp
+*.json.tmp
