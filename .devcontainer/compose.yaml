@@ -1,0 +1,99 @@
+# Compose stack that BACKS the devcontainer. VS Code / the devcontainer CLI runs
+# `docker compose up` on this file automatically when you "Reopen in Container",
+# so bringing the stack up is not a separate step — opening the container IS
+# firing up the compose.
+#
+# Difference vs the root compose.yaml (the native-host stack): there, Postgres and
+# Inngest are published on localhost and the api/worker/ui run on your machine.
+# Here EVERYTHING runs inside the compose network, so services address each other
+# by name (db:5432, inngest:8288) — no host.docker.internal, no host-port juggling,
+# which is what makes it behave identically on macOS / Windows / Linux.
+#
+# Host access to any port is handled by devcontainer.json `forwardPorts` (VS Code
+# picks free host ports), so this file publishes nothing and can't clash with a
+# native `docker compose` / Tilt run, or the known orphan-container :5439 clash.
+
+name: smart-wroclaw-devcontainer
+
+services:
+  # The devcontainer itself. Toolchain image + the mounted source tree. It just
+  # idles (`sleep infinity`); you start uvicorn / pnpm inside it from a terminal.
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # The entrypoint (runs as root) remaps `vscode` to the workspace owner's
+    # uid/gid when a Linux host's uid isn't 1000, then execs `sleep infinity`.
+    # See entrypoint.sh. No-op on macOS / Windows.
+    entrypoint: ["/usr/local/bin/devcontainer-entrypoint.sh"]
+    command: sleep infinity
+    volumes:
+      - ..:/workspaces/smart_wroclaw:cached
+      # Keep the Linux virtualenv and node_modules in named volumes so they never
+      # collide with a host-built .venv / ui/node_modules on the bind mount (a
+      # macOS/Windows venv or native module won't run under Linux) — and so they
+      # survive rebuilds and stay off the slow bind mount.
+      - venv:/workspaces/smart_wroclaw/.venv
+      - ui-node-modules:/workspaces/smart_wroclaw/ui/node_modules
+      # Same rationale as node_modules: keep Next.js/Turbopack's build cache in a
+      # named volume so the container (a non-host uid) never writes into the
+      # host-owned .next on the bind mount — that cross-uid write is what triggers
+      # Turbopack's "failed to create directory … (os error 13)".
+      # NOTE: because this makes ui/.next a MOUNT POINT, `rm -rf ui/.next` fails
+      # inside the container with "Device or resource busy" — clear its contents
+      # instead (`find ui/.next -mindepth 1 -delete`, as dev/start_ui.yaml does).
+      - ui-next:/workspaces/smart_wroclaw/ui/.next
+    environment:
+      # Override the host-oriented values in api/.env: inside this network
+      # Postgres is `db:5432` and the Inngest dev server is `inngest:8288`.
+      # (Real env vars win over the .env file in pydantic-settings.)
+      CONFIG__POSTGRES__HOST: db
+      CONFIG__POSTGRES__PORT: "5432"
+      INNGEST_DEV: http://inngest:8288
+      # Single-process dev: role=all serves REST + the Inngest function host on
+      # one port (8101). Inngest points at app:8101/api/inngest below.
+      SMART_WROCLAW_ROLE: all
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      # Dev-only credentials — mirror the CONFIG__POSTGRES__* defaults in api/.env.
+      POSTGRES_USER: smart_wroclaw
+      POSTGRES_PASSWORD: smart_wroclaw
+      POSTGRES_DB: smart_wroclaw
+    volumes:
+      # postgres:18 stores data in a version subdir; mount the PARENT, not
+      # /var/lib/postgresql/data (the pre-18 path). Named volume keeps DB state
+      # out of the source tree.
+      - db_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smart_wroclaw -d smart_wroclaw"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  inngest:
+    image: inngest/inngest:latest
+    # --no-discovery stops the dev server probing random localhost ports; -u
+    # points it at the app's function host. In role=all that host is on :8101.
+    command: inngest dev --no-discovery -u http://app:8101/api/inngest
+    restart: unless-stopped
+    # Publish the dev server (dashboard + event API, both on :8288) to a FIXED
+    # host port so it's reachable at http://localhost:8488 no matter what else
+    # is running. Host 8488 — not 8288 — so it can't collide with a sibling
+    # imprv Inngest already holding host :8288 (same +200 shift the repo-root
+    # compose.yaml uses). App→dev-server traffic stays internal on inngest:8288.
+    ports:
+      - "8488:8288"
+    depends_on:
+      - app
+
+volumes:
+  venv:
+  ui-node-modules:
+  ui-next:
+  db_data:

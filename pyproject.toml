@@ -21,7 +21,56 @@ numpy = "^2.5.3"
 pandas = "^3.0.6"
 scikit-learn = "^1.9.1"
 pyarrow = "^25.0.1"
+pypyr = "^5.9.1"
+pre-commit = "^4.6.0"
 
+
+# ---------------------------------------------------------------------------
+# pypyr task runner. Shortcuts below map `pypyr <name>` → a pipeline in dev/.
+# Run them from the project root (smart_wroclaw/, where this pyproject.toml
+# lives). The pipelines in dev/ orchestrate the whole stack (api + ui + deploy).
+# Vars are interpolated into the pipelines via `pypyr.steps.configvars`
+# (e.g. {src_dir}, {max_line_length}).
+# ---------------------------------------------------------------------------
+[tool.pypyr.vars]
+src_dir = "api/api"
+test_dir = "api/tests"
+python_target_version = "py312"
+max_line_length = "120"
+min_coverage = "0"
+coverage_dir = "coverage"
+linter_ignore_errors = "D100,D101,D102,D103,D104,D105,D106,D107,E203,E231,W503,N806,E704"
+linter_exclude = ".venv,migrations"
+# Host port of the Inngest dev server (compose.yaml maps 8488:8288). The API +
+# worker point at it via INNGEST_DEV so no signing key is needed locally.
+inngest_dev_url = "http://127.0.0.1:8488"
+# Default demo dataset for `pypyr seed_events` (override with dataset=<path>).
+seed_dataset = "api/tests/manual/fake_events.json"
+
+[tool.pypyr.shortcuts]
+install = { pipeline_name = "dev/install" }
+migrate = { pipeline_name = "dev/migrate" }
+seed_events = { pipeline_name = "dev/seed_events" }
+start_tilt = { pipeline_name = "dev/start_tilt" }
+start_api = { pipeline_name = "dev/start_api" }
+start_worker = { pipeline_name = "dev/start_worker" }
+# Devcontainer path: one role=all backend process on :8101 that INHERITS the
+# container's INNGEST_DEV=http://inngest:8288. Use this INSTEAD of start_api +
+# start_worker inside the devcontainer — those set INNGEST_DEV to the native host
+# port (127.0.0.1:8488), which is unreachable in the container and makes chat
+# turns 500.
+start_be = { pipeline_name = "dev/start_be" }
+start_ui = { pipeline_name = "dev/start_ui" }
+format = { pipeline_name = "dev/format" }
+check_format = { pipeline_name = "dev/check_format" }
+lint = { pipeline_name = "dev/lint" }
+test = { pipeline_name = "dev/test" }
+eval = { pipeline_name = "dev/eval" }
+annotate = { pipeline_name = "dev/annotate" }
+set_role = { pipeline_name = "dev/set_role" }
+precommit = { pipeline_name = "dev/precommit" }
+render_er = { pipeline_name = "dev/render_db_er_diagram" }
+er_explorer = { pipeline_name = "dev/er_explorer" }
 
 [tool.poetry]
 package-mode = false

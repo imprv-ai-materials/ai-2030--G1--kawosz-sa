@@ -1,0 +1,51 @@
+{
+  "name": "Smart Wrocław",
+  "dockerComposeFile": "compose.yaml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/smart_wroclaw",
+  // Bring the whole stack up with the container, not just `app`.
+  "runServices": ["app", "db", "inngest"],
+  "remoteUser": "vscode",
+  // Keep the service's `sleep infinity` command instead of overriding it.
+  "overrideCommand": false,
+
+  // Host access to in-network services. VS Code assigns free host ports and
+  // lists them in the Ports panel — nothing is hard-bound, so no OS/port clashes.
+  "forwardPorts": [3100, 8101, "db:5432"],
+  "portsAttributes": {
+    "3100": { "label": "UI · Next.js", "onAutoForward": "notify" },
+    "8101": { "label": "API + Inngest worker · FastAPI" },
+    // The `inngest` service publishes its dashboard + event API on host 8488
+    // (see .devcontainer/compose.yaml — 8488, not 8288, to avoid the imprv
+    // clash). VS Code detects the published port; auto-open it in the browser.
+    "8488": { "label": "Inngest dev dashboard", "onAutoForward": "openBrowser" },
+    "5432": { "label": "Postgres" }
+  },
+
+  // The `sed` strips CR from the script before running it: on a Windows host
+  // Git may have checked the repo out with CRLF endings (core.autocrlf=true),
+  // and bash then chokes on `set -euo pipefail\r`. .gitattributes pins LF for
+  // fresh checkouts; this keeps an older Windows clone working too. Harmless
+  // no-op on macOS/Linux.
+  "postCreateCommand": "sed -i 's/\\r$//' .devcontainer/postCreate.sh && bash .devcontainer/postCreate.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.black-formatter",
+        "ms-python.isort",
+        "ms-python.flake8",
+        "ms-python.mypy-type-checker",
+        "dbaeumer.vscode-eslint",
+        "bradlc.vscode-tailwindcss",
+        "tamasfe.even-better-toml",
+        "ms-azuretools.vscode-docker",
+        "anthropic.claude-code"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/workspaces/smart_wroclaw/.venv/bin/python"
+      }
+    }
+  }
+}
