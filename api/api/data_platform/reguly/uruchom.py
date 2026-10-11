@@ -6,63 +6,27 @@ Co noc (po load_raw), dla dnia eksportu:
 Przegląd okresu (np. całego września) i wybranych źródeł:
     PYTHONPATH=api poetry run python -m api.data_platform.reguly.uruchom \
         --od 2026-09-01 --dzien 2026-09-30 --zrodlo pos erp
+
+Raport naruszeń w Markdown:
+    PYTHONPATH=api poetry run python -m api.data_platform.reguly.uruchom \
+        --od 2026-09-01 --dzien 2026-09-30 --raport docs/naruszenia_2026-09.md
+
+Każda reguła sprawdza wszystkie wiersze i zbiera wszystkie naruszenia naraz; błąd jednej reguły
+nie przerywa pozostałych.
 """
 
 import argparse
 import sys
 import textwrap
-from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
 
-import duckdb
-import pandas as pd
-import pandera.pandas as pa
-
 from api.adapters.duckdb_conn import DB_PATH, connect
-from api.data_platform.reguly import ecom, erp, pos
-from api.data_platform.reguly.regula import Poziom, Regula
+from api.data_platform.reguly import ecom, erp, pos, raport
+from api.data_platform.reguly.regula import Wynik
 
 ZRODLA = {"pos": pos.REGULY, "erp": erp.REGULY, "ecom": ecom.REGULY}
 PRZYKLADY = 3
-
-
-@dataclass
-class Wynik:
-    regula: Regula
-    wiersze: int
-    bledne: int = 0
-    naruszenia: dict[str, int] = field(default_factory=dict)  # naruszenie -> liczba wierszy
-    przyklady: pd.DataFrame | None = None
-
-    @property
-    def ok(self) -> bool:
-        return not self.naruszenia
-
-
-def sprawdz(regula: Regula, con: duckdb.DuckDBPyConnection, od: date, dzien: date) -> Wynik:
-    ramka = regula.ramka(con, od, dzien)
-    if ramka.empty:  # nic do sprawdzenia, np. dzień bez korekt; brak całego dnia łapią reguły świeżości
-        return Wynik(regula, 0)
-    try:
-        regula.schemat.validate(ramka, lazy=True)
-        return Wynik(regula, len(ramka))
-    except pa.errors.SchemaErrors as e:
-        fc = e.failure_cases
-        # Błąd schematu (brak kolumny, zły typ) nie ma indeksu wiersza — dotyczy całej ramki.
-        cala_ramka = fc["index"].isna()
-        naruszenia = {
-            check: len(ramka) if grupa["index"].isna().any() else grupa["index"].nunique()
-            for check, grupa in fc.assign(check=fc["check"].astype(str)).groupby("check")
-        }
-        indeksy = fc.loc[~cala_ramka, "index"].dropna().unique()
-        return Wynik(
-            regula,
-            len(ramka),
-            bledne=len(ramka) if cala_ramka.any() else len(indeksy),
-            naruszenia=naruszenia,
-            przyklady=ramka.loc[indeksy[:PRZYKLADY]] if len(indeksy) else None,
-        )
 
 
 def wypisz(wyniki: list[Wynik]) -> None:
@@ -76,10 +40,12 @@ def wypisz(wyniki: list[Wynik]) -> None:
         )
     for w in (w for w in wyniki if not w.ok):
         print(f"\n{w.regula.id} [{w.regula.poziom}] {w.regula.opis}")
+        if w.blad:
+            print(f"  - nie udało się wykonać: {w.blad}")
+            continue
         for naruszenie, n in w.naruszenia.items():
             print(f"  - {naruszenie}: {n}")
-        if w.przyklady is not None:
-            print(textwrap.indent(w.przyklady.to_string(max_colwidth=40), "    "))
+        print(textwrap.indent(w.przyklady(PRZYKLADY).to_string(max_colwidth=40), "    "))
 
 
 def main() -> None:
@@ -94,19 +60,27 @@ def main() -> None:
     parser.add_argument("--zrodlo", nargs="+", choices=ZRODLA, default=list(ZRODLA))
     parser.add_argument("--regula", nargs="+", help="tylko wybrane reguły, np. POS-02 ERP-06")
     parser.add_argument("--baza", type=Path, default=DB_PATH, help="plik DuckDB (domyślnie kawosz.duckdb)")
+    parser.add_argument("--raport", type=Path, help="zapisz raport naruszeń w Markdown do tego pliku")
     args = parser.parse_args()
     od = args.od or args.dzien
 
     reguly = [r for z in args.zrodlo for r in ZRODLA[z] if not args.regula or r.id in args.regula]
     con = connect(read_only=True, db_path=args.baza)
     try:
-        wyniki = [sprawdz(r, con, od, args.dzien) for r in reguly]
+        wyniki = [r.sprawdz(con, od, args.dzien) for r in reguly]
     finally:
         con.close()
 
     print(f"Reguły jakości, zakres {od} – {args.dzien}\n")
     wypisz(wyniki)
-    blokujace = [w.regula.id for w in wyniki if not w.ok and w.regula.poziom == Poziom.BLOKUJE]
+    if args.raport:
+        argumenty = sys.argv[1:]
+        if "--baza" in argumenty:  # ścieżka do kopii bazy nie należy do raportu
+            del argumenty[argumenty.index("--baza") : argumenty.index("--baza") + 2]
+        polecenie = "PYTHONPATH=api poetry run python -m api.data_platform.reguly.uruchom " + " ".join(argumenty)
+        args.raport.write_text(raport.markdown(wyniki, od, args.dzien, polecenie))
+        print(f"\nRaport: {args.raport}")
+    blokujace = [w.regula.id for w in wyniki if w.blokuje]
     print(f"\nBlokujące z błędem: {', '.join(blokujace) or 'brak'}")
     sys.exit(1 if blokujace else 0)
 

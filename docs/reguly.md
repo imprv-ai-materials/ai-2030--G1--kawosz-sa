@@ -2,8 +2,10 @@
 
 Cel: błędy z [`skala_problemu.md`](skala_problemu.md) mają nie wracać co noc. Poniżej 37 reguł, które po każdym ładowaniu sprawdzają nowe dane z POS (11), ERP (14) i e-commerce (12). Każda reguła ma poziom (blokuje albo ostrzega), właściciela i numer pozycji ze `skala_problemu.md`, którą łapie.
 
-- **Kod:** [`api/api/data_platform/reguly/`](../api/api/data_platform/reguly/), po jednym pliku na źródło: `pos.py`, `erp.py`, `ecom.py`. Wspólny kształt reguły jest w `regula.py`, uruchomienie w `uruchom.py`.
-- **Budowa reguły:** zapytanie SQL do `kawosz.duckdb` przygotowuje ramkę (złączenia i agregaty liczy DuckDB), a schemat Pandery (`DataFrameSchema`) ją sprawdza. Poziom, właściciel i pozycje ze skali są w `metadata` schematu.
+- **Kod:** [`api/api/data_platform/reguly/`](../api/api/data_platform/reguly/), po jednym pliku na źródło: `pos.py`, `erp.py`, `ecom.py`. Wspólny kształt reguły jest w `regula.py`, uruchomienie w `uruchom.py`, a raport w Markdown w `raport.py`.
+- **Budowa reguły:** zapytanie SQL do `kawosz.duckdb` przygotowuje ramkę (złączenia i agregaty liczy DuckDB), a schemat Pandery (`DataFrameSchema`) ją sprawdza. Poziom, właściciel, jednostka rekordu i pozycje ze skali są w `metadata` schematu.
+- **Testy:** [`api/tests/data_platform/reguly/`](../api/tests/data_platform/reguly/). Każda reguła ma co najmniej jeden mały przykład danych, który ją łamie, i test, że go łapie (szczegóły niżej).
+- **Raport naruszeń za wrzesień 2026:** [`naruszenia_2026-09.md`](naruszenia_2026-09.md).
 - **Wyniki w tym dokumencie** pochodzą z `kawosz.duckdb` (dane do 30.09.2026).
 
 ## Jak uruchomić
@@ -18,6 +20,8 @@ PYTHONPATH=api poetry run python -m api.data_platform.reguly.uruchom --dzien 202
 - Bez `--dzien` runner sprawdza wczorajszy dzień.
 - Przegląd okresu: `--od 2026-09-01 --dzien 2026-09-30`. Wybór źródeł: `--zrodlo pos erp`. Wybór reguł: `--regula POS-02 ERP-06`. Inny plik bazy: `--baza ścieżka.duckdb`.
 - Dla każdej reguły, która nie przeszła, runner wypisuje naruszone warunki z liczbą wierszy i trzy przykładowe wiersze.
+- `--raport plik.md` zapisuje raport naruszeń w Markdown: dla każdej reguły liczbę rekordów, naruszone warunki, 5 przykładów i informację, czy blokuje wsad. Tak powstał [`naruszenia_2026-09.md`](naruszenia_2026-09.md).
+- Wszystkie naruszenia są zbierane naraz. Każda reguła sprawdza wszystkie wiersze (Pandera `lazy=True`), a runner uruchamia wszystkie reguły. Jeśli reguły nie da się wykonać (np. brak tabeli), runner zapisuje błąd i przechodzi do następnej. Reguła blokująca, której nie udało się sprawdzić, blokuje wsad.
 
 **Zakres jednej nocy:**
 - Reguły biorą dane z dnia eksportu w czasie Europe/Warsaw:
@@ -73,7 +77,7 @@ Kolumna „IX 2026” podaje, ile jednostek nie przeszło reguły przy sprawdzen
 | POS-05 | Powiązania: paragon ma pozycje, pozycja ma paragon i produkt z `pos_produkty`, lokal jest w `lokale` i był już otwarty | blokuje | Zespół danych | zapobiegawcza (dziś 0 sierot) | 0 |
 | POS-06 | Zakresy: cena i stawka VAT pozycji są z cennika, cena ręczna (`P0999`) do 500 zł, ilość niezerowa i najwyżej 20 sztuk | blokuje | Operacje lokali (POS) | #24 paragon 48 000 zł; #3 (stawka VAT pozwala policzyć netto POS) | 0 |
 | POS-07 | Paragon ma metodę płatności | ostrzega | Operacje lokali (POS) | #21 paragony bez metody płatności | 14 paragonów |
-| POS-08 | Paragon z ujemną kwotą ma `storno = 1`, a storno ma ujemną kwotę | ostrzega | Operacje lokali (POS) | #22 zwroty bez flagi storno | 2 paragony |
+| POS-08 | Paragon z pozycją o ujemnej ilości albo z ujemną kwotą (zwrot, anulowanie) ma `storno = 1`, a storno ma ujemną kwotę. Łapie też paragon „zakup + zwrot” z dodatnią sumą | ostrzega | Operacje lokali (POS) | #22 zwroty bez flagi storno | 3 paragony |
 | POS-09 | Storno wskazuje numer paragonu, który stornuje (kolumna `nr_paragonu_stornowanego`) | ostrzega | Operacje lokali (POS) | #19 storna bez powiązania | 134 storna (brak kolumny) |
 | POS-10 | Świeżość: każdy otwarty lokal przysłał paragony za każdy dzień do dnia eksportu, z wyjątkiem 1.01, Wielkanocy i 25.12 | blokuje | Zespół danych | zapobiegawcza: brak pliku zaniża przychód | 0 |
 | POS-11 | Liczba wierszy: paragony lokalu w dniu = 0,4–1,8 × mediana tego lokalu z 28 poprzednich dni | ostrzega | Zespół danych | #15 (dzień zdublowany ma ok. 2 ×) | 3 lokalo-dni |
@@ -153,7 +157,7 @@ Wrzesień 2026, kolumna „Rekordy (IX 2026)” ze skali:
 | #19 | 134 paragony | POS-09 | 134 storna | zgodne |
 | #20 | 3 pozycje | ERP-07 | 3 pozycje | zgodne |
 | #21 | 14 paragonów | POS-07 | 14 paragonów | zgodne |
-| #22 | 2 paragony | POS-08 | 2 paragony | zgodne |
+| #22 | 2 paragony | POS-08 | 3 paragony | skala liczy paragony z ujemną sumą; POS-08 łapie też paragon z ujemną pozycją przy dodatniej sumie (lokal 17, 21.09, +55 zł) |
 | #31 | 396 realizacji, 52 500 zł | ECOM-10 | 396 realizacji, 52 500 zł (30 dni) | zgodne |
 
 **Inna granica dnia:** skala liczy e-commerce po `data_utc`, czyli po miesiącu UTC, a reguły po dniu polskim, zgodnie z poprawką z #17. Wrzesień w czasie polskim ma 7 689 zamówień, a w UTC 7 639.
@@ -180,6 +184,31 @@ Na dniu bez eksportu (5.10.2026) blokują POS-10 i ECOM-11, a na 6.10 także ERP
 - POS-11: lokale 8 i 9 w spokojne dni, 0,43 ×;
 - ECOM-12: 6.01.2026 (0,37 ×) i 1.12.2024, weekend Black Friday (3,14 ×);
 - ERP-11: 5,6 ×.
+
+## Testy
+
+Testy leżą w [`api/tests/data_platform/reguly/`](../api/tests/data_platform/reguly/) i działają bez `kawosz.duckdb`.
+
+- `conftest.py` buduje w pamięci małą bazę DuckDB o tych samych tabelach i typach co `kawosz.duckdb`: jeden lokal, dwa paragony, dwie faktury, dwa zamówienia, dwie subskrypcje, jedna karta. Czyste dane przechodzą wszystkie 37 reguł.
+- `test_reguly_pos.py`, `test_reguly_erp.py` i `test_reguly_ecom.py` mają listę `PRZYKLADY`: zapytanie SQL, które psuje czyste dane w jeden sposób, oczekiwane naruszenie i liczbę rekordów, które reguła ma oznaczyć. Dla 37 reguł są 44 przykłady. Przykład: paragon z zakupem ziarna (+169 zł) i zwrotem latte (−1 szt.), z dodatnią sumą i `storno = 0`, musi wpaść do POS-08.
+- Test `test_kazda_regula_ma_zly_przyklad` pilnuje, że nowa reguła nie przejdzie bez przykładu.
+- Dla POS-09, ERP-12 i ECOM-07 jest też test odwrotny: gdy źródło doda wymagane pole, reguła przechodzi, a reguła typów (POS-01, ERP-01, ECOM-01) go nie odrzuca.
+- `test_uruchom.py` sprawdza runner:
+  - wszystkie naruszenia są zbierane naraz;
+  - błąd jednej reguły nie przerywa pozostałych;
+  - przykłady w raporcie obejmują każdy rodzaj naruszenia;
+  - treść raportu jest poprawna;
+  - kod wyjścia to 1 przy regule blokującej.
+
+Uruchomienie: `pypyr test` albo `poetry run pytest api/tests`. Wynik: 95 testów przechodzi.
+
+Celowo zepsułem kod sześć razy i za każdym razem testy to wykryły:
+- POS-08 cofnięta do starej wersji, która sprawdzała tylko ujemną sumę;
+- walidacja bez `lazy=True`;
+- błąd SQL przerywający przebieg;
+- próg ceny ręcznej podniesiony do 50 000 zł;
+- ERP-08 bez sprawdzania NIP-u;
+- ECOM-04 z kursem z dnia zamówienia zamiast z dnia poprzedzającego.
 
 ## Pozycje ze `skala_problemu.md` bez własnej reguły
 

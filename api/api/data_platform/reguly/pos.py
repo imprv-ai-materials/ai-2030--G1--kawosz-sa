@@ -41,23 +41,29 @@ POS_01 = Regula(
             "storno": pa.Column("int32", pa.Check.isin([0, 1])),
             "kanal": pa.Column(str, pa.Check.isin(KANALY), nullable=True),
             "plik": pa.Column(str),
+            # pole, którego wymaga POS-09; gdy dostawca POS je doda, typy dalej się zgadzają
+            "nr_paragonu_stornowanego": pa.Column("Int64", nullable=True, required=False, coerce=True),
         },
         strict=True,
         name="POS-01",
         description="Paragon ma oczekiwane kolumny i typy, a storno, kanał i metoda płatności są ze słowników",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, jednostka="paragon"),
     ),
 )
 
 POS_02 = Regula(
-    sql=f"SELECT lokal, nr_paragonu, data_czas, kwota_brutto, plik FROM ({PARAGONY_W_ZAKRESIE})",
+    # Duplikatem jest drugi wiersz z kolei; kopia pliku ma dopisek w nazwie („… (1).csv”), więc idzie druga.
+    sql=f"""
+        SELECT lokal, nr_paragonu, data_czas, kwota_brutto, plik FROM ({PARAGONY_W_ZAKRESIE})
+        ORDER BY lokal, nr_paragonu, length(plik), plik
+    """,
     schemat=pa.DataFrameSchema(
         {"lokal": pa.Column("int32"), "nr_paragonu": pa.Column("int64")},
         unique=["lokal", "nr_paragonu"],
         report_duplicates="exclude_first",
         name="POS-02",
         description="Paragon (lokal, nr_paragonu) występuje w danych raz",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 15),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 15, jednostka="paragon"),
     ),
 )
 
@@ -84,7 +90,7 @@ POS_03 = Regula(
         ],
         name="POS-03",
         description="Nazwa pliku, numer paragonu i czas są spójne; numeracja w dniu rośnie razem z czasem",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 15, 24),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 15, 24, jednostka="paragon"),
     ),
 )
 
@@ -113,7 +119,7 @@ POS_04 = Regula(
         ],
         name="POS-04",
         description="Suma nagłówków paragonów lokalu w dniu równa się sumie ich pozycji",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 15, 25),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 15, 25, jednostka="lokal × dzień"),
     ),
 )
 
@@ -145,7 +151,7 @@ POS_05 = Regula(
         ],
         name="POS-05",
         description="Paragon ma pozycje, pozycja ma paragon i produkt z cennika, lokal istnieje i był już otwarty",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, jednostka="paragon"),
     ),
 )
 
@@ -174,7 +180,7 @@ POS_06 = Regula(
         ],
         name="POS-06",
         description=f"Cena i VAT z cennika, cena ręczna do {CENA_RECZNA_MAX:.0f} zł, ilość niezerowa do {MAX_SZTUK}",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.OPERACJE_LOKALI, 24, 3),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.OPERACJE_LOKALI, 24, 3, jednostka="pozycja"),
     ),
 )
 
@@ -184,20 +190,31 @@ POS_07 = Regula(
         {"metoda_platnosci": pa.Column(str, pa.Check.isin(METODY_PLATNOSCI))},
         name="POS-07",
         description="Paragon ma metodę płatności",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.OPERACJE_LOKALI, 21),
+        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.OPERACJE_LOKALI, 21, jednostka="paragon"),
     ),
 )
 
 POS_08 = Regula(
-    sql="""
-        SELECT lokal, nr_paragonu, data_czas, storno, kwota_brutto FROM pos_paragony
-        WHERE data_czas::DATE BETWEEN $od AND $dzien AND (storno = 1 OR kwota_brutto < 0)
+    sql=f"""
+        WITH p AS (SELECT lokal, nr_paragonu, count(*) FILTER (WHERE ilosc < 0) AS pozycje_ujemne
+                   FROM pos_pozycje WHERE {DZIEN_POZYCJI} BETWEEN $od AND $dzien GROUP BY ALL)
+        SELECT r.lokal, r.nr_paragonu, r.data_czas, r.storno, r.kwota_brutto,
+               coalesce(p.pozycje_ujemne, 0) AS pozycje_ujemne
+        FROM pos_paragony r LEFT JOIN p USING (lokal, nr_paragonu)
+        WHERE r.data_czas::DATE BETWEEN $od AND $dzien AND (r.storno = 1 OR r.kwota_brutto < 0 OR p.pozycje_ujemne > 0)
     """,
     schemat=pa.DataFrameSchema(
-        checks=[warunek("kwota ujemna ⇔ storno = 1", lambda d: (d["kwota_brutto"] < 0) == (d["storno"] == 1))],
+        checks=[
+            # zwrot towaru to pozycja z ujemną ilością — także w paragonie z dodatnią sumą (zakup + zwrot)
+            warunek(
+                "ujemna ilość lub kwota bez storno = 1",
+                lambda d: (d["storno"] == 1) | ((d["pozycje_ujemne"] == 0) & (d["kwota_brutto"] >= 0)),
+            ),
+            warunek("storno = 1 z kwotą nieujemną", lambda d: (d["storno"] == 0) | (d["kwota_brutto"] < 0)),
+        ],
         name="POS-08",
-        description="Paragon z ujemną kwotą jest oznaczony jako storno (zwrot), a storno ma ujemną kwotę",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.OPERACJE_LOKALI, 22),
+        description="Paragon z ujemną pozycją lub kwotą (zwrot, anulowanie) ma storno = 1, a storno ma ujemną kwotę",
+        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.OPERACJE_LOKALI, 22, jednostka="paragon"),
     ),
 )
 
@@ -205,10 +222,10 @@ POS_09 = Regula(
     sql="SELECT * FROM pos_paragony WHERE storno = 1 AND data_czas::DATE BETWEEN $od AND $dzien",
     schemat=pa.DataFrameSchema(
         # Kolumny dziś nie ma w pliku z kasy — reguła jest wymaganiem wobec dostawcy POS.
-        {"nr_paragonu_stornowanego": pa.Column("int64", pa.Check.in_range(10**9, 10**10 - 1))},
+        {"nr_paragonu_stornowanego": pa.Column("Int64", pa.Check.in_range(10**9, 10**10 - 1), coerce=True)},
         name="POS-09",
         description="Storno wskazuje numer paragonu, który stornuje",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.OPERACJE_LOKALI, 19),
+        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.OPERACJE_LOKALI, 19, jednostka="storno"),
     ),
 )
 
@@ -230,7 +247,7 @@ POS_10 = Regula(
         ],
         name="POS-10",
         description="Każdy otwarty lokal przysłał paragony za każdy dzień do dnia eksportu",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, jednostka="lokal × dzień"),
     ),
 )
 
@@ -253,7 +270,7 @@ POS_11 = Regula(
         ],
         name="POS-11",
         description=f"Liczba paragonów lokalu w dniu to {WOLUMEN_MIN}–{WOLUMEN_MAX} × mediany z 28 poprzednich dni",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.ZESPOL_DANYCH, 15),
+        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.ZESPOL_DANYCH, 15, jednostka="lokal × dzień"),
     ),
 )
 

@@ -35,6 +35,9 @@ ECOM_01 = Regula(
             "notatka": pa.Column(str, nullable=True),
             "zwrot": pa.Column(bool),
             "metoda_platnosci": pa.Column(str, pa.Check.isin(METODY_PLATNOSCI)),
+            # pola, których wymaga ECOM-07; gdy sklep je doda, typy dalej się zgadzają
+            "data_zwrotu": pa.Column(pa.DateTime, nullable=True, required=False, coerce=True),
+            "kwota_zwrotu": pa.Column(float, nullable=True, required=False, coerce=True),
         },
         checks=[
             warunek("pobranie tylko w PLN", lambda d: (d["metoda_platnosci"] != "pobranie") | (d["waluta"] == "PLN"))
@@ -42,7 +45,7 @@ ECOM_01 = Regula(
         strict=True,
         name="ECOM-01",
         description="Zamówienie ma oczekiwane kolumny i typy, unikalne id, kwotę > 0, walutę i metodę ze słownika",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, jednostka="zamówienie"),
     ),
 )
 
@@ -56,7 +59,7 @@ ECOM_02 = Regula(
         checks=[warunek("brutto = Σ ilosc × cena_brutto", lambda d: (d["brutto"] - d["suma_pozycji"]).abs() < 0.005)],
         name="ECOM-02",
         description="Kwota brutto zamówienia równa się sumie jego pozycji (z dostawą)",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 25),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 25, jednostka="zamówienie"),
     ),
 )
 
@@ -84,7 +87,7 @@ ECOM_03 = Regula(
         },
         name="ECOM-03",
         description="Zamówienie ma pozycje, pozycja ma zamówienie, SKU jest w cenniku (wyjątek: jeden wiersz DOSTAWA)",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 30),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 30, jednostka="zamówienie"),
     ),
 )
 
@@ -104,7 +107,7 @@ ECOM_04 = Regula(
         ],
         name="ECOM-04",
         description="Zamówienie w EUR ma kurs NBP z poprzedniego dnia roboczego, więc da się je przeliczyć na PLN",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 13, 33),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 13, 33, jednostka="zamówienie w EUR"),
     ),
 )
 
@@ -136,7 +139,7 @@ ECOM_05 = Regula(
         },
         name="ECOM-05",
         description="Zamówienie nie jest testowe: e-mail spoza @kawosz.pl, bez notatki testowej, ceny PLN z cennika",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.ECOMMERCE, 18),
+        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.ECOMMERCE, 18, jednostka="zamówienie"),
     ),
 )
 
@@ -146,7 +149,7 @@ ECOM_06 = Regula(
         {"email": pa.Column(str, pa.Check.str_matches(r"^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$"))},
         name="ECOM-06",
         description="Zamówienie ma e-mail klienta (także przy pobraniu)",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.ECOMMERCE, 9),
+        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.ECOMMERCE, 9, jednostka="zamówienie"),
     ),
 )
 
@@ -155,12 +158,12 @@ ECOM_07 = Regula(
     schemat=pa.DataFrameSchema(
         # Kolumn dziś nie ma w sklepie — reguła jest wymaganiem wobec systemu.
         {
-            "data_zwrotu": pa.Column("datetime64[ns]"),
-            "kwota_zwrotu": pa.Column("float64", pa.Check.gt(0)),
+            "data_zwrotu": pa.Column(pa.DateTime, coerce=True),
+            "kwota_zwrotu": pa.Column(float, pa.Check.gt(0), coerce=True),
         },
         name="ECOM-07",
         description="Zamówienie ze zwrotem ma datę i kwotę zwrotu",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.ECOMMERCE, 7),
+        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.ECOMMERCE, 7, jednostka="zamówienie ze zwrotem"),
     ),
 )
 
@@ -176,7 +179,7 @@ ECOM_08 = Regula(
         {"sku_o_tej_nazwie": pa.Column("int64", pa.Check.eq(1))},
         name="ECOM-08",
         description="Sprzedany produkt ma w cenniku sklepu nazwę, której nie nosi inny SKU",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.ECOMMERCE, 6),
+        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.ECOMMERCE, 6, jednostka="pozycja"),
     ),
 )
 
@@ -201,7 +204,7 @@ ECOM_09 = Regula(
         checks=[warunek("kwota = cena planu (39 / 399)", lambda d: d["kwota"] == d["kwota_planu"])],
         name="ECOM-09",
         description="Obciążenie subskrypcji ma kwotę swojego planu, jest jedno w miesiącu i ma czas zapisany w UTC",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ECOMMERCE, 17),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ECOMMERCE, 17, jednostka="obciążenie"),
     ),
 )
 
@@ -228,7 +231,7 @@ ECOM_10 = Regula(
         ],
         name="ECOM-10",
         description="Każda realizacja karty podarunkowej ma w tym dniu płatność „karta podarunkowa” w POS lub sklepie",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.ECOMMERCE, 31),
+        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.ECOMMERCE, 31, jednostka="dzień"),
     ),
 )
 
@@ -257,7 +260,7 @@ ECOM_11 = Regula(
         description=(
             "Każdy dzień do dnia eksportu ma zamówienia do późnego wieczora (czas polski) i obciążenia subskrypcji"
         ),
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 17),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 17, jednostka="dzień"),
     ),
 )
 
@@ -279,7 +282,7 @@ ECOM_12 = Regula(
         ],
         name="ECOM-12",
         description=f"Liczba zamówień w dniu mieści się w {WOLUMEN_MIN}–{WOLUMEN_MAX} × mediany z 28 poprzednich dni",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.ZESPOL_DANYCH),
+        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.ZESPOL_DANYCH, jednostka="dzień"),
     ),
 )
 

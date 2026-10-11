@@ -53,6 +53,8 @@ ERP_01 = Regula(
             "waluta": pa.Column(str, pa.Check.eq("PLN")),
             "kwota_netto": pa.Column("float64"),
             "vat": pa.Column("float64"),
+            # pole, którego wymaga ERP-12; gdy ERP je doda, typy dalej się zgadzają
+            "nr_faktury_korygowanej": pa.Column(str, nullable=True, required=False),
         },
         checks=[
             warunek(
@@ -70,7 +72,7 @@ ERP_01 = Regula(
         description=(
             "Dokument ma oczekiwane kolumny i typy, unikalny numer FV/KOR zgodny z datą, PLN i znak kwoty wg typu"
         ),
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.FINANSE),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.FINANSE, jednostka="dokument"),
     ),
 )
 
@@ -100,7 +102,7 @@ ERP_02 = Regula(
         ],
         name="ERP-02",
         description="Netto + VAT = brutto: VAT w granicach stawki, jedna płatność równa netto + VAT, nie przed fakturą",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.FINANSE, 3),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.FINANSE, 3, jednostka="dokument × płatność"),
     ),
 )
 
@@ -121,7 +123,7 @@ ERP_03 = Regula(
         ],
         name="ERP-03",
         description="VAT dokumentu zgadza się ze stawkami indeksów (stawki inne niż 23% wpisuje księgowość)",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.FINANSE, 12),
+        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.FINANSE, 12, jednostka="dokument"),
     ),
 )
 
@@ -139,7 +141,7 @@ ERP_04 = Regula(
         ],
         name="ERP-04",
         description="Kwota netto dokumentu równa się sumie jego pozycji",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 25),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 25, jednostka="dokument"),
     ),
 )
 
@@ -176,7 +178,7 @@ ERP_05 = Regula(
             "Dokument ma pozycje z kartoteki i kontrahenta (aktywni "
             "albo archiwum); pozycje i płatności mają dokument"
         ),
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 32),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 32, jednostka="dokument"),
     ),
 )
 
@@ -190,7 +192,7 @@ ERP_06 = Regula(
         {"kategoria": pa.Column(str)},
         name="ERP-06",
         description="Indeks sprzedany na dokumencie ma kategorię w kartotece",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.KARTOTEKA, 1),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.KARTOTEKA, 1, jednostka="pozycja"),
     ),
 )
 
@@ -207,7 +209,7 @@ ERP_07 = Regula(
         {"indeksy_o_tej_nazwie": pa.Column("int64", pa.Check.eq(1))},
         name="ERP-07",
         description="Nazwa sprzedanego indeksu jest w kartotece jedna (bez drugiego indeksu o tej samej nazwie)",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.KARTOTEKA, 20),
+        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.KARTOTEKA, 20, jednostka="pozycja"),
     ),
 )
 
@@ -235,7 +237,7 @@ ERP_08 = Regula(
         description=(
             "Dokument trafia na główny rekord kontrahenta, a nie na drugi rekord tej samej firmy (NIP lub adres)"
         ),
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.SPRZEDAZ_B2B, 4, 27),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.SPRZEDAZ_B2B, 4, 27, jednostka="dokument"),
     ),
 )
 
@@ -248,7 +250,7 @@ ERP_09 = Regula(
         {"nip10": pa.Column(str, pa.Check(_nip_poprawny, error="NIP: 10 cyfr i poprawna suma kontrolna"))},
         name="ERP-09",
         description="Kontrahent dokumentu ma NIP z 10 cyframi i poprawną sumą kontrolną",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.FINANSE, 14),
+        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.FINANSE, 14, jednostka="dokument"),
     ),
 )
 
@@ -269,7 +271,7 @@ ERP_10 = Regula(
         },
         name="ERP-10",
         description="Kontrahent dokumentu ma ID biura z CRM i jest jedynym kontrahentem z tym ID",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.SPRZEDAZ_B2B, 2, 4),
+        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.SPRZEDAZ_B2B, 2, 4, jednostka="dokument"),
     ),
 )
 
@@ -295,7 +297,7 @@ ERP_11 = Regula(
         description=(
             f"Faktura nie przekracza {KROTNOSC_MEDIANY_KLIENTA} × mediany faktur klienta z 365 dni (do weryfikacji)"
         ),
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.FINANSE, 23),
+        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.FINANSE, 23, jednostka="faktura"),
     ),
 )
 
@@ -306,7 +308,7 @@ ERP_12 = Regula(
         {"nr_faktury_korygowanej": pa.Column(str, pa.Check.str_matches(r"^FV/\d{4}/\d{2}/\d{5}$"))},
         name="ERP-12",
         description="Korekta wskazuje numer faktury, którą koryguje",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.FINANSE, 16),
+        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.FINANSE, 16, jednostka="korekta"),
     ),
 )
 
@@ -329,7 +331,7 @@ ERP_13 = Regula(
         ],
         name="ERP-13",
         description="Dane ERP są świeże: płatności z ostatnich 5 dni, dokumenty z ostatnich 35 dni",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH),
+        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, jednostka="dzień eksportu"),
     ),
 )
 
@@ -362,7 +364,7 @@ ERP_14 = Regula(
         description=(
             f"Liczba faktur miesiąca mieści się w {WOLUMEN_MIN}–{WOLUMEN_MAX} × mediany z 3 poprzednich miesięcy"
         ),
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.FINANSE),
+        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.FINANSE, jednostka="miesiąc"),
     ),
 )
 
