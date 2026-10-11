@@ -1,10 +1,8 @@
 # ai-2030--G1--kawosz-sa
 
-Dane kursowe Kawosz S.A. — generator i dane w `data/` (opis: [data/README.md](data/README.md)).
+Dane kursowe Kawosz S.A. w `data/` (opis: [data/README.md](data/README.md)).
 
 ```bash
 poetry install
-cd data && poetry run python -m kawosz_gen
+PYTHONPATH=api poetry run python -m api.data_platform.load_raw   # data/ → kawosz.duckdb
 ```
-
-Klucz odpowiedzi dla prowadzących: `klucz_odpowiedzi/`.

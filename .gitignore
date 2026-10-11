@@ -20,3 +20,7 @@ _volumes/
 *.json.bak
 *.jsonl.tmp
 *.json.tmp
+# Lokalna baza analityczna i rozpakowane paragony (generowane z data/)
+kawosz.duckdb
+kawosz.duckdb.wal
+_staging/

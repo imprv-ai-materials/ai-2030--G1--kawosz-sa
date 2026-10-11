@@ -10,15 +10,14 @@ te same pliki.
 git lfs pull                         # pliki .parquet i .zip są w Git LFS
 poetry install                       # numpy, pandas, scikit-learn, pyarrow (grupa dev)
 cd data
-poetry run python -m kawosz_gen      # ziarno 2030 → pliki w data/, klucz w ../klucz_odpowiedzi/
+poetry run python -m kawosz_gen      # ziarno 2030 → pliki w data/
 poetry run python -m kawosz_gen.validate   # same warunki kontrolne (liczone z plików)
 ```
 
 Opcje: `--seed`, `--out`, `--key`, `--workers`, `--no-validate`. Pełny przebieg trwa ok. 1,5 minuty.
 
-Klucz odpowiedzi (`klucz_odpowiedzi/` w katalogu głównym repozytorium) jest przeznaczony
-wyłącznie dla prowadzących. Katalog `kawosz_gen/` również zdradza mechanizmy danych —
-uczestnikom należy przekazywać tylko pliki z danymi.
+Katalog `kawosz_gen/` zdradza mechanizmy danych — uczestnikom należy przekazywać tylko pliki
+z danymi.
 
 ## Pliki
 
