@@ -1,7 +1,7 @@
 """Mała baza DuckDB w pamięci z czystymi danymi, które przechodzą wszystkie reguły jakości.
 
 Każdy test psuje w niej jedną rzecz (SQL) i sprawdza, że właściwa reguła to łapie. Tabele mają te
-same kolumny i typy co w kawosz.duckdb; pos_paragony bierze typy wprost z loadera.
+same kolumny i typy co w kawosz.duckdb; pos_paragony bierze kolumny i typy wprost z kontraktu.
 """
 
 from datetime import date
@@ -9,15 +9,18 @@ from datetime import date
 import duckdb
 import pytest
 
-from api.data_platform.load_raw import PARAGONY_TYPES
+from api.data_platform.kontrakty.kontrakt import wczytaj
 
 DZIEN = date(2026, 9, 30)  # środa, ostatni dzień roboczy września: dzień eksportu w testach
 
-_POS_PARAGONY = "CREATE TABLE pos_paragony ({}, plik VARCHAR);".format(
-    ", ".join(f"{kolumna} {typ}" for kolumna, typ in PARAGONY_TYPES.items())
+# Jak w kawosz.duckdb: kolumny wymagane z kontraktu, `kanal`, którą kasy przysyłają od 1.06.2026 spoza
+# kontraktu (loader łączy pliki po nazwach), i `plik` z nazwą pliku.
+_POS_PARAGONY = "CREATE TABLE pos_paragony ({}, kanal VARCHAR, plik VARCHAR);".format(
+    ", ".join(f"{k.nazwa} {k.typ}" for k in wczytaj("pos_paragony").kolumny if k.wymagana)
 )
+_NAGLOWEK = wczytaj("pos_paragony").wymagane
 
-CZYSTE_DANE = _POS_PARAGONY + """
+CZYSTE_DANE = _POS_PARAGONY + f"""
 -- POS: jeden lokal, dwa paragony z 30.09 po cenach z cennika
 CREATE TABLE lokale (lokal BIGINT, nazwa VARCHAR, miasto VARCHAR, adres VARCHAR, data_otwarcia DATE);
 INSERT INTO lokale VALUES (1, 'Kawosz Poznań – ul. Testowa 1', 'Poznań', 'ul. Testowa 1', DATE '2020-01-01');
@@ -31,6 +34,12 @@ INSERT INTO pos_produkty VALUES
 INSERT INTO pos_paragony (lokal, nr_paragonu, data_czas, kanal, kwota_brutto, metoda_platnosci, storno, plik) VALUES
     (1, 2609300001, TIMESTAMP '2026-09-30 08:00:00', 'sala', 14.00, 'karta', 0, 'pos_paragony_1_2026-09-30.csv'),
     (1, 2609300002, TIMESTAMP '2026-09-30 09:00:00', 'wynos', 169.00, 'BLIK', 0, 'pos_paragony_1_2026-09-30.csv');
+
+-- rejestr plików z kasy (load_raw): nagłówek zgodny z kontraktem, plik dotarł 1.10 o 5:12
+CREATE TABLE pos_pliki (
+    plik VARCHAR, lokal INTEGER, dzien DATE, kolumny VARCHAR[], wiersze INTEGER, czas_dostawy TIMESTAMP);
+INSERT INTO pos_pliki VALUES
+    ('pos_paragony_1_2026-09-30.csv', 1, DATE '2026-09-30', {_NAGLOWEK}, 2, TIMESTAMP '2026-10-01 05:12:00');
 
 CREATE TABLE pos_pozycje (
     lokal BIGINT, nr_paragonu BIGINT, kod_produktu VARCHAR, ilosc BIGINT, cena_brutto DOUBLE, vat BIGINT);

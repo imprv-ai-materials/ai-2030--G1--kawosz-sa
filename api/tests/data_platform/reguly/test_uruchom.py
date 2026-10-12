@@ -101,6 +101,6 @@ def test_runner_kod_wyjscia_i_raport(plik_bazy, tmp_path, monkeypatch, psucie, k
 
 def test_poziomy_regul():
     """Każda reguła ma poziom, właściciela, jednostkę i unikalny identyfikator."""
-    assert len({r.id for r in WSZYSTKIE}) == len(WSZYSTKIE) == 37
+    assert len({r.id for r in WSZYSTKIE}) == len(WSZYSTKIE) == 39
     assert {r.poziom for r in WSZYSTKIE} == set(Poziom)
     assert all(r.wlasciciel and r.jednostka for r in WSZYSTKIE)

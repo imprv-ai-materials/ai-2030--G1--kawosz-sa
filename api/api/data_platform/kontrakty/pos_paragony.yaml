@@ -1,0 +1,236 @@
+# Kontrakt danych: paragony z kas POS.
+# Jedno źródło prawdy: load_raw.py bierze stąd format pliku i typy, a reguly/pos.py opisy, poziomy,
+# właścicieli, słowniki i progi reguł POS. Zmiana tutaj zmienia działanie potoku. Każda zmiana kolumn
+# wymaga nowej wersji (patrz zasady_zmian) i wpisu w historii.
+
+kontrakt: pos_paragony
+nazwa: Paragony POS
+wersja: 1.0.0
+wlasciciel: Operacje lokali (POS)
+odbiorca: Zespół danych
+system: system kasowy w lokalach (dostawca zewnętrzny)
+opis: >-
+  Nagłówki paragonów z kas: jeden plik CSV na lokal i dzień. Pozycje paragonów (pos_pozycje), cennik
+  (pos_produkty) i słownik lokali (lokale) przychodzą z tego samego systemu, więc reguły POS sprawdzają
+  także ich spójność z paragonami.
+
+dostawa:
+  termin: D+1 do 6:00
+  dni_po: 1
+  godzina: "06:00"
+  strefa: Europe/Warsaw
+  format: csv
+  plik: pos_paragony_{lokal}_{dzien}.csv
+  kodowanie: cp1250
+  separator: ";"
+  separator_dziesietny: ","
+  naglowek: true
+
+zasady_zmian: >-
+  Każdą zmianę pliku właściciel zgłasza zespołowi danych co najmniej 30 dni przed wdrożeniem w kasach.
+  Dotyczy to nowej, usuniętej lub przemianowanej kolumny, innego typu albo kolejności, nowej wartości
+  słownika, innego kodowania lub separatora. Zespół danych wydaje wtedy nową wersję kontraktu.
+  Wersja podrzędna (1.1.0) to nowa kolumna opcjonalna na końcu pliku albo nowa wartość słownika. Wersja
+  główna (2.0.0) to usunięcie, zmiana nazwy, typu, kolejności lub formatu; wymaga okresu przejściowego.
+  Plik niezgodny z obowiązującą wersją łamie kontrakt.
+
+historia:
+  - wersja: 1.0.0
+    data: 2026-10-12
+    zmiana: >-
+      Pierwsza wersja: układ pliku, w jakim kasy wysyłały paragony od początku danych (I.2024), oraz
+      reguły POS-01…POS-13. Projekt do akceptacji przez właściciela, w tym termin dostawy.
+
+kolumny:
+  - nazwa: lokal
+    typ: INTEGER
+    opis: numer lokalu z tabeli lokale
+    min: 1
+  - nazwa: nr_paragonu
+    typ: BIGINT
+    opis: RRMMDD + 4-cyfrowy numer kolejny w dniu, np. 2609300001
+    min: 1000000000
+    max: 9999999999
+  - nazwa: data_czas
+    typ: TIMESTAMP
+    opis: czas lokalny kasy (Europe/Warsaw), RRRR-MM-DD GG:MM:SS
+  - nazwa: kwota_brutto
+    typ: DECIMAL(12,2)
+    opis: kwota brutto paragonu w PLN, przecinek dziesiętny; storno ma kwotę ujemną
+  - nazwa: metoda_platnosci
+    typ: VARCHAR
+    opis: sposób zapłaty; brak wartości tylko ostrzega (POS-07)
+    pusta: true
+    dozwolone: [gotówka, karta, BLIK, aplikacja, karta podarunkowa]
+  - nazwa: storno
+    typ: INTEGER
+    opis: 1 = paragon anuluje lub zwraca inny paragon, 0 = sprzedaż
+    dozwolone: [0, 1]
+  - nazwa: nr_paragonu_stornowanego
+    typ: BIGINT
+    opis: >-
+      numer paragonu, który storno anuluje; zamówione u dostawcy POS (POS-09), kasa może je dopisać na
+      końcu pliku bez nowej wersji
+    wymagana: false
+    pusta: true
+    min: 1000000000
+    max: 9999999999
+
+reguly:
+  POS-01:
+    opis: Paragon ma kolumny i typy z kontraktu, a storno i metoda płatności mają wartości ze słowników
+    poziom: blokuje
+    wlasciciel: Zespół danych
+    jednostka: paragon
+    kolumny: [lokal, nr_paragonu, data_czas, kwota_brutto, metoda_platnosci, storno, nr_paragonu_stornowanego]
+    co_zrobic: >-
+      Operacje lokali ustalają z dostawcą POS, skąd w pliku wzięła się ta wartość. Błędny plik dostawca
+      wysyła ponownie. Nowa wartość słownika (np. nowa metoda płatności) wymaga nowej wersji kontraktu.
+
+  POS-02:
+    opis: Paragon (lokal, nr_paragonu) występuje w danych raz
+    poziom: blokuje
+    wlasciciel: Zespół danych
+    jednostka: paragon
+    skala: [15]
+    kolumny: [lokal, nr_paragonu]
+    co_zrobic: >-
+      Ten sam paragon przyszedł dwa razy, zwykle jako kopia pliku z dopiskiem w nazwie, np. „ (1)”. Zespół
+      danych usuwa kopię z wsadu i ładuje dzień ponownie. Operacje lokali ustalają z dostawcą POS, dlaczego
+      kasa wysłała plik drugi raz.
+
+  POS-03:
+    opis: Nazwa pliku, numer paragonu i czas są spójne; numeracja w dniu rośnie razem z czasem
+    poziom: blokuje
+    wlasciciel: Zespół danych
+    jednostka: paragon
+    skala: [15, 24]
+    kolumny: [plik, nr_paragonu, data_czas]
+    co_zrobic: >-
+      Kopię pliku z dopiskiem w nazwie zespół danych usuwa z wsadu. Paragon z numerem albo datą spoza
+      kolejności Operacje lokali wyjaśniają z lokalem: czy to ręczna korekta, czy zła data na kasie.
+
+  POS-04:
+    opis: Suma nagłówków paragonów lokalu w dniu równa się sumie ich pozycji
+    poziom: blokuje
+    wlasciciel: Zespół danych
+    jednostka: lokal × dzień
+    skala: [15, 25]
+    kolumny: [kwota_brutto, pos_pozycje.ilosc, pos_pozycje.cena_brutto]
+    co_zrobic: >-
+      Przychód lokalu z tego dnia jest niepewny. Zespół danych sprawdza, czy to zdublowany plik (POS-02)
+      albo brak pozycji. Jeśli nie, prosi dostawcę POS o ponowny eksport dnia.
+
+  POS-05:
+    opis: Paragon ma pozycje, pozycja ma paragon i produkt z cennika, lokal istnieje i był już otwarty
+    poziom: blokuje
+    wlasciciel: Zespół danych
+    jednostka: paragon
+    kolumny: [lokal, nr_paragonu, pos_pozycje.kod_produktu]
+    co_zrobic: >-
+      Zespół danych prosi dostawcę POS o pełny eksport dnia: paragony, pozycje i cennik. Nowy lokal albo
+      produkt Operacje lokali dopisują do słownika przed pierwszą sprzedażą.
+
+  POS-06:
+    opis: Cena i VAT z cennika, cena ręczna do {cena_reczna_max} zł, ilość niezerowa do {max_sztuk}
+    poziom: blokuje
+    wlasciciel: Operacje lokali (POS)
+    jednostka: pozycja
+    skala: [24, 3]
+    kolumny: [pos_pozycje.ilosc, pos_pozycje.cena_brutto, pos_pozycje.vat]
+    co_zrobic: >-
+      Operacje lokali sprawdzają paragon z lokalem i poprawiają go korektą w kasie. Jeśli zmienił się
+      cennik, najpierw aktualizują pos_produkty.
+    parametry:
+      stawki_vat: [5, 8, 23]
+      # P0999 „Kawa ziarnista na wagę” ma w cenniku 0,00 — cenę wpisuje sprzedawca. Ziarno kosztuje 149–169 zł/kg.
+      cena_reczna_max: 500
+      max_sztuk: 20
+
+  POS-07:
+    opis: Paragon ma metodę płatności
+    poziom: ostrzega
+    wlasciciel: Operacje lokali (POS)
+    jednostka: paragon
+    skala: [21]
+    kolumny: [metoda_platnosci]
+    co_zrobic: >-
+      Operacje lokali sprawdzają w lokalu, czym zapłacono (zwykle to kasa po awarii terminala), i uzupełniają
+      metodę w systemie POS. Dane idą dalej.
+
+  POS-08:
+    opis: Paragon z ujemną pozycją lub kwotą (zwrot, anulowanie) ma storno = 1, a storno ma ujemną kwotę
+    poziom: ostrzega
+    wlasciciel: Operacje lokali (POS)
+    jednostka: paragon
+    skala: [22]
+    kolumny: [storno, kwota_brutto, pos_pozycje.ilosc]
+    co_zrobic: >-
+      Operacje lokali przypominają lokalowi, jak w kasie robi się zwrot, i poprawiają flagę storno.
+      Dane idą dalej.
+
+  POS-09:
+    opis: Storno wskazuje numer paragonu, który stornuje
+    poziom: ostrzega
+    wlasciciel: Operacje lokali (POS)
+    jednostka: storno
+    skala: [19]
+    kolumny: [nr_paragonu_stornowanego]
+    co_zrobic: >-
+      Operacje lokali zamawiają u dostawcy POS kolumnę nr_paragonu_stornowanego na końcu pliku. Kontrakt
+      już ją przewiduje, więc nie trzeba nowej wersji. Do tego czasu storna nie da się powiązać
+      z paragonem, który anuluje. Dane idą dalej.
+
+  POS-10:
+    opis: Każdy otwarty lokal przysłał paragony za każdy dzień do dnia eksportu
+    poziom: blokuje
+    wlasciciel: Zespół danych
+    jednostka: lokal × dzień
+    kolumny: [lokal, data_czas]
+    co_zrobic: >-
+      Brak całego dnia zaniża przychód, więc dzień nie trafia do raportów. Zespół danych sprawdza, czy plik
+      dotarł. Jeśli nie, Operacje lokali proszą lokal lub dostawcę POS o wysłanie pliku.
+    parametry:
+      dni_zamkniete: ["1.01", Wielkanoc, "25.12"]  # lokale zamknięte: tego dnia nie ma paragonów
+
+  POS-11:
+    opis: Liczba paragonów lokalu w dniu to {wolumen_min}–{wolumen_max} × mediany z {dni_historii} poprzednich dni
+    poziom: ostrzega
+    wlasciciel: Zespół danych
+    jednostka: lokal × dzień
+    skala: [15]
+    kolumny: [lokal, nr_paragonu]
+    co_zrobic: >-
+      Zespół danych sprawdza, czy to zdublowany albo niepełny plik. Jeśli ruch jest prawdziwy (zamknięcie
+      lokalu, wydarzenie), odnotowuje to i niczego nie poprawia.
+    parametry:
+      # w historii 0,43–1,71 poza duplikatami
+      wolumen_min: 0.4
+      wolumen_max: 1.8
+      dni_historii: 28
+      min_dni_historii: 14
+
+  POS-12:
+    opis: Plik z kasy ma kolumny z kontraktu, w kolejności z kontraktu, i żadnych innych
+    poziom: blokuje
+    wlasciciel: Operacje lokali (POS)
+    jednostka: plik × kolumna
+    kolumny: [lokal, nr_paragonu, data_czas, kwota_brutto, metoda_platnosci, storno, nr_paragonu_stornowanego]
+    co_zrobic: >-
+      Operacje lokali ustalają z dostawcą POS, czy zmiana jest zamierzona. Jeśli tak, zgłaszają ją zespołowi
+      danych: nazwę kolumny, typ, znaczenie, słownik wartości i datę wdrożenia. Zespół danych wydaje nową
+      wersję kontraktu. Jeśli nie, dostawca wraca do układu z kontraktu i wysyła pliki ponownie. Do tego
+      czasu pliki ze zmianą nie trafiają do raportów.
+
+  POS-13:
+    opis: Plik za dzień D dotarł w terminie dostawy z kontraktu
+    poziom: ostrzega
+    wlasciciel: Operacje lokali (POS)
+    jednostka: plik
+    kolumny: [plik]
+    co_zrobic: >-
+      Poranne raporty nie miały tego dnia. Operacje lokali wyjaśniają z dostawcą POS przyczynę opóźnienia,
+      np. kasę offline albo błąd wysyłki. Dane idą dalej, a raporty z tego ranka trzeba odświeżyć.
+    bez_danych: >-
+      Reguła sprawdza tylko pliki ze znanym czasem dostawy. Archiwum ZIP go nie ma: wszystkie pliki mają w nim
+      datę spakowania 30.09.2026 23:59. Termin da się sprawdzić, gdy loader zapisze, kiedy plik dotarł.

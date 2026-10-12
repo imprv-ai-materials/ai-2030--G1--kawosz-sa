@@ -10,7 +10,7 @@ from api.data_platform.reguly.regula import Wynik
 PRZYKLADY = 5
 
 
-def _liczba(n: int) -> str:
+def liczba(n: int) -> str:
     return f"{n:,}".replace(",", " ")
 
 
@@ -78,8 +78,8 @@ def markdown(wyniki: list[Wynik], od: date, dzien: date, polecenie: str) -> str:
         "|---|---|---|---:|---:|---|---|",
     ]
     linie += [
-        f"| {w.regula.id} | {_blokuje(w)} | {w.regula.wlasciciel} | {_liczba(w.bledne) if not w.blad else 'błąd'}"
-        f" | {_liczba(w.wiersze)} | {w.regula.jednostka} | {_skala(w)} |"
+        f"| {w.regula.id} | {_blokuje(w)} | {w.regula.wlasciciel} | {liczba(w.bledne) if not w.blad else 'błąd'}"
+        f" | {liczba(w.wiersze)} | {w.regula.jednostka} | {_skala(w)} |"
         for w in naruszone
     ]
 
@@ -97,13 +97,13 @@ def markdown(wyniki: list[Wynik], od: date, dzien: date, polecenie: str) -> str:
         if w.blad:
             linie += [f"- **Reguły nie udało się wykonać:** `{w.blad}`"]
             continue
-        linie += [f"- Rekordy z naruszeniem: {_liczba(w.bledne)} z {_liczba(w.wiersze)} (jednostka: {r.jednostka})."]
+        linie += [f"- Rekordy z naruszeniem: {liczba(w.bledne)} z {liczba(w.wiersze)} (jednostka: {r.jednostka})."]
         linie += ["- Naruszenia (rekord może łamać kilka warunków naraz):"]
         linie += [
-            f"  - {nazwa}: {_liczba(n)}" for nazwa, n in sorted(w.naruszenia.items(), key=lambda x: (-x[1], x[0]))
+            f"  - {nazwa}: {liczba(n)}" for nazwa, n in sorted(w.naruszenia.items(), key=lambda x: (-x[1], x[0]))
         ]
         przyklady = w.przyklady(PRZYKLADY)
-        linie += ["", f"Przykłady ({len(przyklady)} z {_liczba(w.bledne)}):", ""] + _tabela(przyklady)
+        linie += ["", f"Przykłady ({len(przyklady)} z {liczba(w.bledne)}):", ""] + _tabela(przyklady)
 
     linie += [
         "",
@@ -113,7 +113,7 @@ def markdown(wyniki: list[Wynik], od: date, dzien: date, polecenie: str) -> str:
         "|---|---|---:|---|---|",
     ]
     linie += [
-        f"| {w.regula.id} | {w.regula.poziom} | {_liczba(w.wiersze)} | {w.regula.jednostka} | {_skala(w)} |"
+        f"| {w.regula.id} | {w.regula.poziom} | {liczba(w.wiersze)} | {w.regula.jednostka} | {_skala(w)} |"
         for w in wyniki
         if w.ok
     ]

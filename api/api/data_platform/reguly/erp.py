@@ -2,23 +2,30 @@
 
 Kwoty ERP są netto w PLN, `vat` to kwota podatku, płatność to brutto. Dzień dokumentu to `data`.
 Kartotekę i kontrahentów sprawdzamy przez dokumenty z zakresu: co noc tylko to, czego dotyczą nowe faktury.
+
+Opisy, poziomy, właściciele, słowniki i progi reguł są w kontrakcie kontrakty/erp_faktury.yaml.
+Tu jest tylko SQL, który przygotowuje ramkę, i warunki, które ją sprawdzają.
 """
 
 import pandas as pd
 import pandera.pandas as pa
 
-from api.data_platform.reguly.regula import Poziom, Regula, Wlasciciel, meta, warunek
+from api.data_platform.kontrakty.kontrakt import wczytaj
+from api.data_platform.reguly.regula import Regula, warunek
 
-STAWKA_PODSTAWOWA = 23
-# Indeksy ze stawką inną niż podstawowa. Kartoteka nie ma kolumny ze stawką, więc listę prowadzi księgowość.
-STAWKI_VAT_INDEKSOW = {
-    "20.01.0001": 5,  # MLEKO UHT 3,2% 1L — stawka obniżona do potwierdzenia (skala #12)
-}
+KONTRAKT = wczytaj("erp_faktury")
+STAWKA_PODSTAWOWA = KONTRAKT.parametry("ERP-02")["stawka_podstawowa"]
+STAWKI_VAT_INDEKSOW = KONTRAKT.parametry("ERP-03")["stawki_vat_indeksow"]
+KROTNOSC_MEDIANY_KLIENTA, DNI_HISTORII_KLIENTA, MIN_FAKTUR_KLIENTA = (
+    KONTRAKT.parametry("ERP-11")[p] for p in ("krotnosc_mediany_klienta", "dni_historii", "min_faktur_klienta")
+)
+MAKS_DNI_BEZ_PLATNOSCI, MAKS_DNI_BEZ_DOKUMENTU = (
+    KONTRAKT.parametry("ERP-13")[p] for p in ("maks_dni_bez_platnosci", "maks_dni_bez_dokumentu")
+)
+WOLUMEN_MIN, WOLUMEN_MAX, MIESIACE_HISTORII = (
+    KONTRAKT.parametry("ERP-14")[p] for p in ("wolumen_min", "wolumen_max", "miesiace_historii")
+)
 WAGI_NIP = (6, 5, 7, 2, 3, 4, 5, 6, 7)
-# Faktura większa niż 8 × mediana faktur klienta z 365 dni (w historii: jedna, następna ma 5,6 ×).
-KROTNOSC_MEDIANY_KLIENTA = 8
-# Liczba faktur w miesiącu względem mediany z 3 poprzednich miesięcy (w historii: 1 359–1 431 faktur).
-WOLUMEN_MIN, WOLUMEN_MAX = 0.9, 1.1
 
 FAKTURY_W_ZAKRESIE = "SELECT * FROM erp_faktury WHERE data BETWEEN $od AND $dzien"
 KONTRAHENCI = """
@@ -42,20 +49,9 @@ def _nip_poprawny(nip10: pd.Series) -> pd.Series:
 
 ERP_01 = Regula(
     sql=FAKTURY_W_ZAKRESIE,
-    schemat=pa.DataFrameSchema(
-        {
-            "nr_faktury": pa.Column(
-                str, pa.Check.str_matches(r"^(FV/\d{4}/\d{2}/\d{5}|KOR/\d{4}/\d{2}/\d{4})$"), unique=True
-            ),
-            "id_kontrahenta": pa.Column("int64"),
-            "data": pa.Column("datetime64[us]"),
-            "typ": pa.Column(str, pa.Check.isin(["faktura", "korekta"])),
-            "waluta": pa.Column(str, pa.Check.eq("PLN")),
-            "kwota_netto": pa.Column("float64"),
-            "vat": pa.Column("float64"),
-            # pole, którego wymaga ERP-12; gdy ERP je doda, typy dalej się zgadzają
-            "nr_faktury_korygowanej": pa.Column(str, nullable=True, required=False),
-        },
+    schemat=KONTRAKT.schemat(
+        "ERP-01",
+        KONTRAKT.kolumny_pandera(),
         checks=[
             warunek(
                 "rok i miesiąc w numerze = data",
@@ -68,11 +64,6 @@ ERP_01 = Regula(
             warunek("faktura > 0, korekta < 0", lambda d: (d["kwota_netto"] > 0) == (d["typ"] == "faktura")),
         ],
         strict=True,
-        name="ERP-01",
-        description=(
-            "Dokument ma oczekiwane kolumny i typy, unikalny numer FV/KOR zgodny z datą, PLN i znak kwoty wg typu"
-        ),
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.FINANSE, jednostka="dokument"),
     ),
 )
 
@@ -83,7 +74,8 @@ ERP_02 = Regula(
         FROM erp_faktury f LEFT JOIN erp_platnosci p USING (nr_faktury)
         WHERE f.data BETWEEN $od AND $dzien
     """,
-    schemat=pa.DataFrameSchema(
+    schemat=KONTRAKT.schemat(
+        "ERP-02",
         {"platnosci": pa.Column("int64", pa.Check.le(1, error="więcej niż jedna płatność za fakturę"))},
         checks=[
             warunek(
@@ -100,9 +92,6 @@ ERP_02 = Regula(
                 lambda d: d["data_platnosci"].isna() | (d["data_platnosci"] >= d["data"]),
             ),
         ],
-        name="ERP-02",
-        description="Netto + VAT = brutto: VAT w granicach stawki, jedna płatność równa netto + VAT, nie przed fakturą",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.FINANSE, 3, jednostka="dokument × płatność"),
     ),
 )
 
@@ -117,13 +106,11 @@ ERP_03 = Regula(
         SELECT f.nr_faktury, f.data, f.kwota_netto, f.vat, p.vat_wg_stawek, p.indeksy_stawka_inna
         FROM erp_faktury f JOIN p USING (nr_faktury) WHERE f.data BETWEEN $od AND $dzien
     """,
-    schemat=pa.DataFrameSchema(
+    schemat=KONTRAKT.schemat(
+        "ERP-03",
         checks=[
             warunek("VAT = Σ netto pozycji × stawka indeksu", lambda d: (d["vat"] - d["vat_wg_stawek"]).abs() <= 0.02)
         ],
-        name="ERP-03",
-        description="VAT dokumentu zgadza się ze stawkami indeksów (stawki inne niż 23% wpisuje księgowość)",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.FINANSE, 12, jednostka="dokument"),
     ),
 )
 
@@ -133,15 +120,13 @@ ERP_04 = Regula(
         SELECT f.nr_faktury, f.typ, f.kwota_netto, coalesce(p.suma_pozycji, 0) AS suma_pozycji
         FROM erp_faktury f LEFT JOIN p USING (nr_faktury) WHERE f.data BETWEEN $od AND $dzien
     """,
-    schemat=pa.DataFrameSchema(
+    schemat=KONTRAKT.schemat(
+        "ERP-04",
         checks=[
             warunek(
                 "kwota_netto = Σ ilosc × cena (±1 gr)", lambda d: (d["kwota_netto"] - d["suma_pozycji"]).abs() <= 0.01
             )
         ],
-        name="ERP-04",
-        description="Kwota netto dokumentu równa się sumie jego pozycji",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 25, jednostka="dokument"),
     ),
 )
 
@@ -161,7 +146,8 @@ ERP_05 = Regula(
             SELECT nr_faktury FROM erp_pozycje UNION SELECT nr_faktury FROM erp_platnosci)
         ANTI JOIN erp_faktury USING (nr_faktury)
     """,
-    schemat=pa.DataFrameSchema(
+    schemat=KONTRAKT.schemat(
+        "ERP-05",
         {"ma_dokument": pa.Column(bool, pa.Check.eq(True, error="pozycja lub płatność bez dokumentu"))},
         checks=[
             warunek("dokument ma pozycje", lambda d: ~d["ma_dokument"] | (d["pozycje"] >= 1)),
@@ -173,12 +159,6 @@ ERP_05 = Regula(
                 lambda d: ~d["ma_dokument"] | (d["kontrahent_w_tabelach"] == 1),
             ),
         ],
-        name="ERP-05",
-        description=(
-            "Dokument ma pozycje z kartoteki i kontrahenta (aktywni "
-            "albo archiwum); pozycje i płatności mają dokument"
-        ),
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, 32, jednostka="dokument"),
     ),
 )
 
@@ -188,11 +168,9 @@ ERP_06 = Regula(
         FROM erp_pozycje p JOIN erp_faktury f USING (nr_faktury) JOIN erp_kartoteka k USING (indeks)
         WHERE f.data BETWEEN $od AND $dzien
     """,
-    schemat=pa.DataFrameSchema(
+    schemat=KONTRAKT.schemat(
+        "ERP-06",
         {"kategoria": pa.Column(str)},
-        name="ERP-06",
-        description="Indeks sprzedany na dokumencie ma kategorię w kartotece",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.KARTOTEKA, 1, jednostka="pozycja"),
     ),
 )
 
@@ -205,11 +183,9 @@ ERP_07 = Regula(
         FROM erp_pozycje p JOIN erp_faktury f USING (nr_faktury) JOIN k USING (indeks)
         WHERE f.data BETWEEN $od AND $dzien
     """,
-    schemat=pa.DataFrameSchema(
+    schemat=KONTRAKT.schemat(
+        "ERP-07",
         {"indeksy_o_tej_nazwie": pa.Column("int64", pa.Check.eq(1))},
-        name="ERP-07",
-        description="Nazwa sprzedanego indeksu jest w kartotece jedna (bez drugiego indeksu o tej samej nazwie)",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.KARTOTEKA, 20, jednostka="pozycja"),
     ),
 )
 
@@ -222,7 +198,8 @@ ERP_08 = Regula(
                k.najstarszy_z_tym_nip, k.najstarszy_pod_adresem
         FROM erp_faktury f JOIN k USING (id_kontrahenta) WHERE f.data BETWEEN $od AND $dzien
     """,
-    schemat=pa.DataFrameSchema(
+    schemat=KONTRAKT.schemat(
+        "ERP-08",
         checks=[
             warunek(
                 "brak starszego kontrahenta z tym samym NIP-em",
@@ -233,11 +210,6 @@ ERP_08 = Regula(
                 lambda d: d["id_kontrahenta"] == d["najstarszy_pod_adresem"],
             ),
         ],
-        name="ERP-08",
-        description=(
-            "Dokument trafia na główny rekord kontrahenta, a nie na drugi rekord tej samej firmy (NIP lub adres)"
-        ),
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.SPRZEDAZ_B2B, 4, 27, jednostka="dokument"),
     ),
 )
 
@@ -246,11 +218,9 @@ ERP_09 = Regula(
         SELECT f.nr_faktury, f.data, k.id_kontrahenta, k.nazwa, k.nip, k.nip10
         FROM erp_faktury f JOIN ({KONTRAHENCI}) k USING (id_kontrahenta) WHERE f.data BETWEEN $od AND $dzien
     """,
-    schemat=pa.DataFrameSchema(
+    schemat=KONTRAKT.schemat(
+        "ERP-09",
         {"nip10": pa.Column(str, pa.Check(_nip_poprawny, error="NIP: 10 cyfr i poprawna suma kontrolna"))},
-        name="ERP-09",
-        description="Kontrahent dokumentu ma NIP z 10 cyframi i poprawną sumą kontrolną",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.FINANSE, 14, jednostka="dokument"),
     ),
 )
 
@@ -262,53 +232,45 @@ ERP_10 = Regula(
         SELECT f.nr_faktury, f.data, f.kwota_netto, k.id_kontrahenta, k.nazwa, k.id_biura_crm, k.kontrahenci_z_tym_crm
         FROM erp_faktury f JOIN k USING (id_kontrahenta) WHERE f.data BETWEEN $od AND $dzien
     """,
-    schemat=pa.DataFrameSchema(
+    schemat=KONTRAKT.schemat(
+        "ERP-10",
         {
             "id_biura_crm": pa.Column(str),
             "kontrahenci_z_tym_crm": pa.Column(
                 float, pa.Check.eq(1, error="ID z CRM przypięte do kilku kontrahentów"), nullable=True, coerce=True
             ),
         },
-        name="ERP-10",
-        description="Kontrahent dokumentu ma ID biura z CRM i jest jedynym kontrahentem z tym ID",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.SPRZEDAZ_B2B, 2, 4, jednostka="dokument"),
     ),
 )
 
 ERP_11 = Regula(
-    sql="""
+    sql=f"""
         SELECT * FROM (
             SELECT nr_faktury, id_kontrahenta, data, kwota_netto,
-                   median(kwota_netto) OVER w AS mediana_klienta_365_dni, count(*) OVER w AS faktury_klienta_365_dni
-            FROM erp_faktury WHERE typ = 'faktura' AND data BETWEEN $od::DATE - 365 AND $dzien
+                   median(kwota_netto) OVER w AS mediana_klienta, count(*) OVER w AS faktury_klienta
+            FROM erp_faktury WHERE typ = 'faktura' AND data BETWEEN $od::DATE - {DNI_HISTORII_KLIENTA} AND $dzien
             WINDOW w AS (PARTITION BY id_kontrahenta ORDER BY data
-                         RANGE BETWEEN INTERVAL 365 DAY PRECEDING AND INTERVAL 1 DAY PRECEDING))
+                         RANGE BETWEEN INTERVAL {DNI_HISTORII_KLIENTA} DAY PRECEDING AND INTERVAL 1 DAY PRECEDING))
         WHERE data >= $od
     """,
-    schemat=pa.DataFrameSchema(
+    schemat=KONTRAKT.schemat(
+        "ERP-11",
         checks=[
             warunek(
-                f"netto ≤ {KROTNOSC_MEDIANY_KLIENTA} × mediana faktur klienta z 365 dni",
-                lambda d: (d["faktury_klienta_365_dni"] < 3)
-                | (d["kwota_netto"] <= KROTNOSC_MEDIANY_KLIENTA * d["mediana_klienta_365_dni"]),
+                f"netto ≤ {KROTNOSC_MEDIANY_KLIENTA} × mediana faktur klienta z {DNI_HISTORII_KLIENTA} dni",
+                lambda d: (d["faktury_klienta"] < MIN_FAKTUR_KLIENTA)
+                | (d["kwota_netto"] <= KROTNOSC_MEDIANY_KLIENTA * d["mediana_klienta"]),
             )
         ],
-        name="ERP-11",
-        description=(
-            f"Faktura nie przekracza {KROTNOSC_MEDIANY_KLIENTA} × mediany faktur klienta z 365 dni (do weryfikacji)"
-        ),
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.FINANSE, 23, jednostka="faktura"),
     ),
 )
 
 ERP_12 = Regula(
     sql="SELECT * FROM erp_faktury WHERE typ = 'korekta' AND data BETWEEN $od AND $dzien",
-    schemat=pa.DataFrameSchema(
-        # Kolumny dziś nie ma w ERP — reguła jest wymaganiem wobec systemu.
-        {"nr_faktury_korygowanej": pa.Column(str, pa.Check.str_matches(r"^FV/\d{4}/\d{2}/\d{5}$"))},
-        name="ERP-12",
-        description="Korekta wskazuje numer faktury, którą koryguje",
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.FINANSE, 16, jednostka="korekta"),
+    schemat=KONTRAKT.schemat(
+        "ERP-12",
+        # Kolumna jest w kontrakcie jako opcjonalna, ale korekta musi ją mieć: dziś ERP jej nie przysyła.
+        {"nr_faktury_korygowanej": KONTRAKT.kolumna("nr_faktury_korygowanej").pandera(nullable=False, required=True)},
     ),
 )
 
@@ -318,53 +280,46 @@ ERP_13 = Regula(
                (SELECT max(data_platnosci) FROM erp_platnosci WHERE data_platnosci <= $dzien) AS ostatnia_platnosc,
                (SELECT max(data) FROM erp_faktury WHERE data <= $dzien) AS ostatni_dokument
     """,
-    schemat=pa.DataFrameSchema(
+    schemat=KONTRAKT.schemat(
+        "ERP-13",
         checks=[
-            # Płatności księgowane są w dni robocze; najdłuższa przerwa w historii (święta) to 5 dni.
             warunek(
-                "ostatnia płatność nie starsza niż 5 dni", lambda d: (d["dzien"] - d["ostatnia_platnosc"]).dt.days <= 5
+                f"ostatnia płatność nie starsza niż {MAKS_DNI_BEZ_PLATNOSCI} dni",
+                lambda d: (d["dzien"] - d["ostatnia_platnosc"]).dt.days <= MAKS_DNI_BEZ_PLATNOSCI,
             ),
-            # Faktury idą hurtem w ostatni dzień roboczy miesiąca, w środku miesiąca pojedyncze.
             warunek(
-                "ostatni dokument nie starszy niż 35 dni", lambda d: (d["dzien"] - d["ostatni_dokument"]).dt.days <= 35
+                f"ostatni dokument nie starszy niż {MAKS_DNI_BEZ_DOKUMENTU} dni",
+                lambda d: (d["dzien"] - d["ostatni_dokument"]).dt.days <= MAKS_DNI_BEZ_DOKUMENTU,
             ),
         ],
-        name="ERP-13",
-        description="Dane ERP są świeże: płatności z ostatnich 5 dni, dokumenty z ostatnich 35 dni",
-        metadata=meta(Poziom.BLOKUJE, Wlasciciel.ZESPOL_DANYCH, jednostka="dzień eksportu"),
     ),
 )
 
 ERP_14 = Regula(
-    sql="""
-        WITH m AS (SELECT unnest(generate_series(date_trunc('month', $od::DATE) - INTERVAL 3 MONTH,
-                                                 date_trunc('month', $dzien::DATE), INTERVAL 1 MONTH))::DATE
-                              AS miesiac),
+    sql=f"""
+        WITH m AS (SELECT unnest(generate_series(
+                              date_trunc('month', $od::DATE) - INTERVAL {MIESIACE_HISTORII} MONTH,
+                              date_trunc('month', $dzien::DATE), INTERVAL 1 MONTH))::DATE AS miesiac),
         f AS (SELECT date_trunc('month', data)::DATE AS miesiac, count(*) AS faktury
               FROM erp_faktury WHERE typ = 'faktura' AND data <= $dzien GROUP BY 1),
         k AS (SELECT m.miesiac, coalesce(f.faktury, 0) AS faktury,
-                     median(coalesce(f.faktury, 0)) OVER (ORDER BY m.miesiac ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING)
-                         AS mediana_3_mies,
+                     median(coalesce(f.faktury, 0)) OVER (
+                         ORDER BY m.miesiac ROWS BETWEEN {MIESIACE_HISTORII} PRECEDING AND 1 PRECEDING) AS mediana,
                      -- faktury idą w ostatni dzień roboczy: sobota i niedziela przesuwają go na piątek
                      last_day(m.miesiac) - CASE dayofweek(last_day(m.miesiac)) WHEN 6 THEN 1 WHEN 0 THEN 2 ELSE 0 END
                          AS ostatni_dzien_roboczy
               FROM m LEFT JOIN f USING (miesiac))
         SELECT * FROM k WHERE ostatni_dzien_roboczy BETWEEN $od AND $dzien
     """,
-    schemat=pa.DataFrameSchema(
+    schemat=KONTRAKT.schemat(
+        "ERP-14",
         checks=[
             # mediana 0 = brak historii (początek danych); przerwę w dostawach łapie ERP-13
             warunek(
-                f"faktury = {WOLUMEN_MIN}–{WOLUMEN_MAX} × mediana z 3 miesięcy",
-                lambda d: (d["mediana_3_mies"] == 0)
-                | (d["faktury"] / d["mediana_3_mies"]).between(WOLUMEN_MIN, WOLUMEN_MAX),
+                f"faktury = {WOLUMEN_MIN}–{WOLUMEN_MAX} × mediana z {MIESIACE_HISTORII} miesięcy",
+                lambda d: (d["mediana"] == 0) | (d["faktury"] / d["mediana"]).between(WOLUMEN_MIN, WOLUMEN_MAX),
             )
         ],
-        name="ERP-14",
-        description=(
-            f"Liczba faktur miesiąca mieści się w {WOLUMEN_MIN}–{WOLUMEN_MAX} × mediany z 3 poprzednich miesięcy"
-        ),
-        metadata=meta(Poziom.OSTRZEGA, Wlasciciel.FINANSE, jednostka="miesiąc"),
     ),
 )
 

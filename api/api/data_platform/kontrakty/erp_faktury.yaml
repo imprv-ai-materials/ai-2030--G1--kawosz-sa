@@ -1,0 +1,247 @@
+# Kontrakt danych: faktury i korekty z ERP.
+# Jedno źródło prawdy dla reguł ERP: reguly/erp.py bierze stąd opisy, poziomy, właścicieli, słowniki
+# i progi. Każda zmiana kolumn wymaga nowej wersji (patrz zasady_zmian) i wpisu w historii.
+
+kontrakt: erp_faktury
+nazwa: Faktury ERP
+wersja: 1.0.0
+wlasciciel: Finanse i księgowość
+odbiorca: Zespół danych
+system: ERP (księgowość, sprzedaż B2B)
+opis: >-
+  Faktury i korekty sprzedaży B2B: jeden wiersz na dokument, kwoty netto w PLN, VAT jako kwota podatku,
+  data dokumentu bez godziny. Pozycje (erp_pozycje), płatności (erp_platnosci), kartoteka indeksów
+  i kontrahenci (aktywni i archiwum) przychodzą z tego samego systemu, więc reguły ERP sprawdzają także je.
+
+dostawa:
+  termin: D+1 do 6:00
+  dni_po: 1
+  godzina: "06:00"
+  strefa: Europe/Warsaw
+  format: parquet
+  plik: erp_faktury.parquet
+
+zasady_zmian: >-
+  Każdą zmianę tabeli właściciel zgłasza zespołowi danych co najmniej 30 dni przed wdrożeniem w ERP.
+  Dotyczy to nowej, usuniętej lub przemianowanej kolumny, innego typu, formatu numeru dokumentu, nowej
+  waluty lub typu dokumentu. Zespół danych wydaje wtedy nową wersję kontraktu. Wersja podrzędna (1.1.0)
+  to nowa kolumna opcjonalna albo nowa wartość słownika. Wersja główna (2.0.0) to usunięcie, zmiana
+  nazwy, typu albo znaczenia kolumny. Tabela niezgodna z obowiązującą wersją łamie kontrakt.
+
+historia:
+  - wersja: 1.0.0
+    data: 2026-10-12
+    zmiana: >-
+      Pierwsza wersja: kolumny dokumentów, jak ERP je wysyła, oraz reguły ERP-01…ERP-14. Projekt do
+      akceptacji przez właściciela, w tym termin dostawy.
+
+kolumny:
+  - nazwa: nr_faktury
+    typ: VARCHAR
+    opis: FV/RRRR/MM/NNNNN dla faktury, KOR/RRRR/MM/NNNN dla korekty
+    unikalna: true
+    wzorzec: ^(FV/\d{4}/\d{2}/\d{5}|KOR/\d{4}/\d{2}/\d{4})$
+  - nazwa: id_kontrahenta
+    typ: BIGINT
+    opis: kontrahent z erp_kontrahenci albo erp_kontrahenci_archiwum
+  - nazwa: data
+    typ: DATE
+    opis: data dokumentu
+  - nazwa: typ
+    typ: VARCHAR
+    opis: rodzaj dokumentu
+    dozwolone: [faktura, korekta]
+  - nazwa: waluta
+    typ: VARCHAR
+    opis: waluta dokumentu
+    dozwolone: [PLN]
+  - nazwa: kwota_netto
+    typ: DOUBLE
+    opis: kwota netto w PLN; faktura dodatnia, korekta ujemna
+  - nazwa: vat
+    typ: DOUBLE
+    opis: kwota podatku VAT w PLN
+  - nazwa: nr_faktury_korygowanej
+    typ: VARCHAR
+    opis: faktura, którą koryguje korekta; zamówione w ERP (ERP-12), ERP może je dodać bez nowej wersji
+    wymagana: false
+    pusta: true
+    wzorzec: ^FV/\d{4}/\d{2}/\d{5}$
+
+reguly:
+  ERP-01:
+    opis: Dokument ma kolumny i typy z kontraktu, unikalny numer FV/KOR zgodny z datą, PLN i znak kwoty wg typu
+    poziom: blokuje
+    wlasciciel: Finanse i księgowość
+    jednostka: dokument
+    kolumny: [nr_faktury, data, typ, waluta, kwota_netto, vat, nr_faktury_korygowanej]
+    co_zrobic: >-
+      Finanse ustalają z administratorem ERP, skąd wzięła się zmiana: nowa kolumna, typ, numeracja czy
+      waluta. Zamierzoną zmianę zgłaszają zespołowi danych, który wydaje nową wersję kontraktu. Błędny
+      dokument poprawiają w ERP. Do tego czasu dane z tych dni nie trafiają do raportów.
+
+  ERP-02:
+    opis: "Netto + VAT = brutto: VAT w granicach stawki, jedna płatność równa netto + VAT, nie przed fakturą"
+    poziom: blokuje
+    wlasciciel: Finanse i księgowość
+    jednostka: dokument × płatność
+    skala: [3]
+    kolumny: [kwota_netto, vat, erp_platnosci.kwota, erp_platnosci.data_platnosci]
+    co_zrobic: >-
+      Finanse sprawdzają dokument i płatność w ERP: podwójne zaksięgowanie, błędna kwota albo data.
+      Poprawiony dokument ERP wysyła w następnym eksporcie.
+    parametry:
+      stawka_podstawowa: 23
+
+  ERP-03:
+    opis: VAT dokumentu zgadza się ze stawkami indeksów (stawki inne niż podstawowa wpisuje księgowość)
+    poziom: ostrzega
+    wlasciciel: Finanse i księgowość
+    jednostka: dokument
+    skala: [12]
+    kolumny: [vat, erp_pozycje.indeks]
+    co_zrobic: >-
+      Księgowość potwierdza stawkę VAT indeksu. Jeśli stawka jest inna niż podstawowa, dopisuje ją do
+      stawki_vat_indeksow w tym kontrakcie albo koryguje fakturę. Dane idą dalej.
+    parametry:
+      # Kartoteka nie ma kolumny ze stawką, więc stawki inne niż podstawowa prowadzi księgowość.
+      stawki_vat_indeksow:
+        "20.01.0001": 5  # MLEKO UHT 3,2% 1L — stawka obniżona do potwierdzenia (skala #12)
+
+  ERP-04:
+    opis: Kwota netto dokumentu równa się sumie jego pozycji
+    poziom: blokuje
+    wlasciciel: Zespół danych
+    jednostka: dokument
+    skala: [25]
+    kolumny: [kwota_netto, erp_pozycje.ilosc, erp_pozycje.cena]
+    co_zrobic: >-
+      Zespół danych sprawdza, czy eksport pozycji jest pełny. Jeśli tak, Finanse wyjaśniają w ERP różnicę
+      między nagłówkiem a pozycjami.
+
+  ERP-05:
+    opis: Dokument ma pozycje z kartoteki i kontrahenta (aktywni albo archiwum); pozycje i płatności mają dokument
+    poziom: blokuje
+    wlasciciel: Zespół danych
+    jednostka: dokument
+    skala: [32]
+    kolumny: [nr_faktury, id_kontrahenta, erp_pozycje.indeks]
+    co_zrobic: >-
+      Zespół danych prosi o pełny eksport dokumentów, pozycji, płatności, kartoteki i kontrahentów z tego
+      dnia. Kontrahent nie może być naraz w aktywnych i w archiwum.
+
+  ERP-06:
+    opis: Indeks sprzedany na dokumencie ma kategorię w kartotece
+    poziom: blokuje
+    wlasciciel: Dane podstawowe (kartoteka ERP)
+    jednostka: pozycja
+    skala: [1]
+    kolumny: [erp_pozycje.indeks, erp_kartoteka.kategoria]
+    co_zrobic: >-
+      Dane podstawowe uzupełniają kategorię indeksu w kartotece ERP. Bez kategorii przychód nie trafia
+      do żadnej grupy produktów.
+
+  ERP-07:
+    opis: Nazwa sprzedanego indeksu jest w kartotece jedna (bez drugiego indeksu o tej samej nazwie)
+    poziom: ostrzega
+    wlasciciel: Dane podstawowe (kartoteka ERP)
+    jednostka: pozycja
+    skala: [20]
+    kolumny: [erp_pozycje.indeks, erp_kartoteka.nazwa]
+    co_zrobic: >-
+      Dane podstawowe scalają zdublowane indeksy albo nadają im różne nazwy. Dane idą dalej.
+
+  ERP-08:
+    opis: Dokument trafia na główny rekord kontrahenta, a nie na drugi rekord tej samej firmy (NIP lub adres)
+    poziom: blokuje
+    wlasciciel: Sprzedaż B2B (kontrahenci)
+    jednostka: dokument
+    skala: [4, 27]
+    kolumny: [id_kontrahenta, erp_kontrahenci.nip, erp_kontrahenci.adres]
+    co_zrobic: >-
+      Sprzedaż B2B scala zdublowanych kontrahentów w ERP i przepina dokumenty na rekord główny (najstarszy).
+      Do tego czasu przychód klienta jest rozbity na dwa rekordy.
+
+  ERP-09:
+    opis: Kontrahent dokumentu ma NIP z 10 cyframi i poprawną sumą kontrolną
+    poziom: ostrzega
+    wlasciciel: Finanse i księgowość
+    jednostka: dokument
+    skala: [14]
+    kolumny: [id_kontrahenta, erp_kontrahenci.nip]
+    co_zrobic: >-
+      Finanse poprawiają NIP kontrahenta w ERP na podstawie bazy GUS albo umowy. Dane idą dalej.
+
+  ERP-10:
+    opis: Kontrahent dokumentu ma ID biura z CRM i jest jedynym kontrahentem z tym ID
+    poziom: ostrzega
+    wlasciciel: Sprzedaż B2B (kontrahenci)
+    jednostka: dokument
+    skala: [2, 4]
+    kolumny: [id_kontrahenta, erp_kontrahenci.id_biura_crm]
+    co_zrobic: >-
+      Sprzedaż B2B uzupełnia ID biura z CRM w rekordzie kontrahenta albo usuwa je z drugiego rekordu tej
+      samej firmy. Dane idą dalej.
+
+  ERP-11:
+    opis: >-
+      Faktura nie przekracza {krotnosc_mediany_klienta} × mediany faktur klienta z {dni_historii} dni
+      (do weryfikacji)
+    poziom: ostrzega
+    wlasciciel: Finanse i księgowość
+    jednostka: faktura
+    skala: [23]
+    kolumny: [kwota_netto, id_kontrahenta]
+    co_zrobic: >-
+      Finanse potwierdzają fakturę z umową i opiekunem klienta. Jeśli jest prawdziwa, raporty pokazują ją
+      osobno od przychodu powtarzalnego. Dane idą dalej.
+    parametry:
+      # w historii jedna taka faktura, następna ma 5,6 ×
+      krotnosc_mediany_klienta: 8
+      dni_historii: 365
+      min_faktur_klienta: 3
+
+  ERP-12:
+    opis: Korekta wskazuje numer faktury, którą koryguje
+    poziom: ostrzega
+    wlasciciel: Finanse i księgowość
+    jednostka: korekta
+    skala: [16]
+    kolumny: [nr_faktury_korygowanej]
+    co_zrobic: >-
+      Finanse zamawiają w ERP kolumnę nr_faktury_korygowanej. Kontrakt już ją przewiduje, więc nie trzeba
+      nowej wersji. Do tego czasu korekty nie da się przypisać do faktury ani miesiąca sprzedaży. Dane idą dalej.
+
+  ERP-13:
+    opis: >-
+      Dane ERP są świeże: płatności z ostatnich {maks_dni_bez_platnosci} dni, dokumenty z ostatnich
+      {maks_dni_bez_dokumentu} dni
+    poziom: blokuje
+    wlasciciel: Zespół danych
+    jednostka: dzień eksportu
+    kolumny: [data, erp_platnosci.data_platnosci]
+    co_zrobic: >-
+      Eksport z ERP nie dotarł albo jest niepełny. Zespół danych sprawdza, czy plik przyszedł, i prosi
+      administratora ERP o ponowny eksport.
+    parametry:
+      # Płatności księgowane są w dni robocze; najdłuższa przerwa w historii (święta) to 5 dni.
+      maks_dni_bez_platnosci: 5
+      # Faktury idą hurtem w ostatni dzień roboczy miesiąca, w środku miesiąca pojedyncze.
+      maks_dni_bez_dokumentu: 35
+
+  ERP-14:
+    opis: >-
+      Liczba faktur miesiąca mieści się w {wolumen_min}–{wolumen_max} × mediany z {miesiace_historii}
+      poprzednich miesięcy
+    poziom: ostrzega
+    wlasciciel: Finanse i księgowość
+    jednostka: miesiąc
+    kolumny: [nr_faktury, data]
+    co_zrobic: >-
+      Finanse sprawdzają, czy faktury z końca miesiąca zostały wystawione w całości. Jeśli liczba jest
+      prawdziwa (nowi lub utraceni klienci), odnotowują to. Dane idą dalej.
+    parametry:
+      # w historii 1 359–1 431 faktur w miesiącu
+      wolumen_min: 0.9
+      wolumen_max: 1.1
+      miesiace_historii: 3

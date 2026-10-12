@@ -1,0 +1,233 @@
+# Kontrakt danych: zamówienia sklepu internetowego.
+# Jedno źródło prawdy dla reguł e-commerce: reguly/ecom.py bierze stąd opisy, poziomy, właścicieli,
+# słowniki i progi. Każda zmiana kolumn wymaga nowej wersji (patrz zasady_zmian) i wpisu w historii.
+
+kontrakt: ecom_zamowienia
+nazwa: Zamówienia e-commerce
+wersja: 1.0.0
+wlasciciel: E-commerce
+odbiorca: Zespół danych
+system: sklep internetowy
+opis: >-
+  Zamówienia sklepu: jeden wiersz na zamówienie, czas w UTC, kwoty brutto w walucie zamówienia (PLN lub
+  EUR). Pozycje (ecom_pozycje), cennik (ecom_produkty), obciążenia subskrypcji (ecom_subskrypcje) i karty
+  podarunkowe przychodzą z tego samego systemu, więc reguły e-commerce sprawdzają także je. Dzień
+  biznesowy to dzień w czasie polskim (Europe/Warsaw).
+
+dostawa:
+  termin: D+1 do 6:00
+  dni_po: 1
+  godzina: "06:00"
+  strefa: Europe/Warsaw
+  format: parquet
+  plik: ecom_zamowienia.parquet
+
+zasady_zmian: >-
+  Każdą zmianę tabeli właściciel zgłasza zespołowi danych co najmniej 30 dni przed wdrożeniem w sklepie.
+  Dotyczy to nowej, usuniętej lub przemianowanej kolumny, innego typu albo strefy czasu, nowej waluty lub
+  metody płatności. Zespół danych wydaje wtedy nową wersję kontraktu. Wersja podrzędna (1.1.0) to nowa
+  kolumna opcjonalna albo nowa wartość słownika. Wersja główna (2.0.0) to usunięcie, zmiana nazwy, typu
+  albo znaczenia kolumny. Tabela niezgodna z obowiązującą wersją łamie kontrakt.
+
+historia:
+  - wersja: 1.0.0
+    data: 2026-10-12
+    zmiana: >-
+      Pierwsza wersja: kolumny zamówień, jak sklep je wysyła, oraz reguły ECOM-01…ECOM-12. Projekt do
+      akceptacji przez właściciela, w tym termin dostawy.
+
+kolumny:
+  - nazwa: id
+    typ: BIGINT
+    opis: numer zamówienia
+    unikalna: true
+  - nazwa: data_utc
+    typ: TIMESTAMP_NS
+    opis: czas złożenia zamówienia w UTC
+  - nazwa: waluta
+    typ: VARCHAR
+    opis: waluta zamówienia
+    dozwolone: [PLN, EUR]
+  - nazwa: brutto
+    typ: DOUBLE
+    opis: kwota brutto zamówienia z dostawą, w walucie zamówienia
+    wiekszy_niz: 0
+  - nazwa: email
+    typ: VARCHAR
+    opis: e-mail klienta; brak tylko ostrzega (ECOM-06)
+    pusta: true
+  - nazwa: notatka
+    typ: VARCHAR
+    opis: notatka do zamówienia
+    pusta: true
+  - nazwa: zwrot
+    typ: BOOLEAN
+    opis: czy klient zwrócił zamówienie
+  - nazwa: metoda_platnosci
+    typ: VARCHAR
+    opis: sposób zapłaty
+    dozwolone: [BLIK, karta, przelew, pobranie, karta podarunkowa]
+  - nazwa: data_zwrotu
+    typ: TIMESTAMP_NS
+    opis: czas zwrotu; zamówione u sklepu (ECOM-07), sklep może je dodać bez nowej wersji
+    wymagana: false
+    pusta: true
+  - nazwa: kwota_zwrotu
+    typ: DOUBLE
+    opis: zwrócona kwota brutto; zamówione u sklepu (ECOM-07), sklep może je dodać bez nowej wersji
+    wymagana: false
+    pusta: true
+    wiekszy_niz: 0
+
+reguly:
+  ECOM-01:
+    opis: Zamówienie ma kolumny i typy z kontraktu, unikalne id, kwotę > 0, walutę i metodę ze słownika
+    poziom: blokuje
+    wlasciciel: Zespół danych
+    jednostka: zamówienie
+    kolumny: [id, data_utc, waluta, brutto, email, notatka, zwrot, metoda_platnosci, data_zwrotu, kwota_zwrotu]
+    co_zrobic: >-
+      E-commerce ustala ze sklepem, skąd wzięła się zmiana: nowa kolumna, typ, waluta czy metoda płatności.
+      Zamierzoną zmianę zgłasza zespołowi danych, który wydaje nową wersję kontraktu. Błąd sklep poprawia
+      i wysyła tabelę ponownie. Do tego czasu dane z tych dni nie trafiają do raportów.
+
+  ECOM-02:
+    opis: Kwota brutto zamówienia równa się sumie jego pozycji (z dostawą)
+    poziom: blokuje
+    wlasciciel: Zespół danych
+    jednostka: zamówienie
+    skala: [25]
+    kolumny: [brutto, ecom_pozycje.ilosc, ecom_pozycje.cena_brutto]
+    co_zrobic: >-
+      Zespół danych sprawdza, czy eksport pozycji jest pełny. Jeśli tak, E-commerce wyjaśnia ze sklepem
+      rabat albo dostawę, których nie ma w pozycjach.
+
+  ECOM-03:
+    opis: "Zamówienie ma pozycje, pozycja ma zamówienie, SKU jest w cenniku (wyjątek: jeden wiersz DOSTAWA)"
+    poziom: blokuje
+    wlasciciel: Zespół danych
+    jednostka: zamówienie
+    skala: [30]
+    kolumny: [id, ecom_pozycje.sku]
+    co_zrobic: >-
+      Zespół danych prosi o pełny eksport zamówień, pozycji i cennika z tego dnia. Nowy SKU E-commerce
+      dopisuje do cennika przed pierwszą sprzedażą.
+
+  ECOM-04:
+    opis: Zamówienie w EUR ma kurs NBP z poprzedniego dnia roboczego, więc da się je przeliczyć na PLN
+    poziom: blokuje
+    wlasciciel: Zespół danych
+    jednostka: zamówienie w EUR
+    skala: [13, 33]
+    kolumny: [waluta, data_utc]
+    co_zrobic: >-
+      Zespół danych dociąga brakujące kursy NBP do kursy_nbp i uruchamia sprawdzenie ponownie.
+    parametry:
+      maks_wiek_kursu_dni: 7
+      kurs_min: 3.5
+      kurs_max: 5.5
+
+  ECOM-05:
+    opis: "Zamówienie nie jest testowe: e-mail spoza {domena_wewnetrzna}, bez notatki testowej, ceny PLN z cennika"
+    poziom: ostrzega
+    wlasciciel: E-commerce
+    jednostka: zamówienie
+    skala: [18]
+    kolumny: [email, notatka, ecom_pozycje.cena_brutto]
+    co_zrobic: >-
+      E-commerce potwierdza, że to zamówienie testowe, i oznacza je w sklepie. Testy na produkcji robi
+      z kont spoza sprzedaży. Dane idą dalej.
+    parametry:
+      domena_wewnetrzna: "@kawosz.pl"
+      notatka_testowa: test|nie realiz|nie wysyłać
+
+  ECOM-06:
+    opis: Zamówienie ma e-mail klienta (także przy pobraniu)
+    poziom: ostrzega
+    wlasciciel: E-commerce
+    jednostka: zamówienie
+    skala: [9]
+    kolumny: [email]
+    co_zrobic: >-
+      E-commerce ustawia e-mail jako pole obowiązkowe w koszyku, także przy pobraniu. Dane idą dalej.
+    parametry:
+      wzorzec_email: ^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$
+
+  ECOM-07:
+    opis: Zamówienie ze zwrotem ma datę i kwotę zwrotu
+    poziom: ostrzega
+    wlasciciel: E-commerce
+    jednostka: zamówienie ze zwrotem
+    skala: [7]
+    kolumny: [data_zwrotu, kwota_zwrotu]
+    co_zrobic: >-
+      E-commerce zamawia w sklepie kolumny data_zwrotu i kwota_zwrotu. Kontrakt już je przewiduje, więc
+      nie trzeba nowej wersji. Do tego czasu zwrotu nie da się przypisać do miesiąca ani kwoty. Dane idą dalej.
+
+  ECOM-08:
+    opis: Sprzedany produkt ma w cenniku sklepu nazwę, której nie nosi inny SKU
+    poziom: ostrzega
+    wlasciciel: E-commerce
+    jednostka: pozycja
+    skala: [6]
+    kolumny: [ecom_produkty.nazwa, ecom_pozycje.sku]
+    co_zrobic: >-
+      E-commerce scala zdublowane SKU w cenniku albo nadaje im różne nazwy. Dane idą dalej.
+
+  ECOM-09:
+    opis: Obciążenie subskrypcji ma kwotę swojego planu, jest jedno w miesiącu i ma czas zapisany w UTC
+    poziom: blokuje
+    wlasciciel: E-commerce
+    jednostka: obciążenie
+    skala: [17]
+    kolumny: [ecom_subskrypcje.plan, ecom_subskrypcje.kwota, ecom_subskrypcje.data_platnosci]
+    co_zrobic: >-
+      E-commerce sprawdza w sklepie cennik planów i nocny batch obciążeń: podwójne obciążenie albo zapis
+      w czasie polskim zamiast UTC. Poprawione dane sklep wysyła ponownie.
+    parametry:
+      plany:
+        miesięczny: 39.0
+        roczny: 399.0
+      # Subskrypcje obciąża nocny batch 00:00–03:00 czasu polskiego, czyli 22:00–01:59 UTC.
+      godziny_batcha_utc: [22, 23, 0, 1]
+
+  ECOM-10:
+    opis: Każda realizacja karty podarunkowej ma w tym dniu płatność „karta podarunkowa” w POS lub sklepie
+    poziom: ostrzega
+    wlasciciel: E-commerce
+    jednostka: dzień
+    skala: [31]
+    kolumny: [metoda_platnosci, karty_podarunkowe.data_realizacji]
+    co_zrobic: >-
+      E-commerce i Operacje lokali wdrażają metodę płatności „karta podarunkowa” w sklepie i w kasach.
+      Do tego czasu realizację karty można policzyć jako przychód drugi raz. Dane idą dalej.
+
+  ECOM-11:
+    opis: Każdy dzień do dnia eksportu ma zamówienia do późnego wieczora (czas polski) i obciążenia subskrypcji
+    poziom: blokuje
+    wlasciciel: Zespół danych
+    jednostka: dzień
+    skala: [17]
+    kolumny: [data_utc, ecom_subskrypcje.data_platnosci]
+    co_zrobic: >-
+      Dzień jest niepełny, więc nie trafia do raportów. Zespół danych sprawdza, czy eksport nie został ucięty
+      na granicy dnia UTC, i prosi sklep o ponowny eksport.
+    parametry:
+      # Ostatnie zamówienie dnia zawsze było po 23:00 czasu polskiego; wcześniejsze = dzień ucięty.
+      ostatnia_godzina_min: 22
+
+  ECOM-12:
+    opis: Liczba zamówień w dniu mieści się w {wolumen_min}–{wolumen_max} × mediany z {dni_historii} poprzednich dni
+    poziom: ostrzega
+    wlasciciel: Zespół danych
+    jednostka: dzień
+    kolumny: [id]
+    co_zrobic: >-
+      Zespół danych sprawdza, czy eksport jest pełny i bez duplikatów. Jeśli ruch jest prawdziwy (promocja,
+      święta), odnotowuje to i niczego nie poprawia.
+    parametry:
+      # w historii 0,37 w święta – 3,14 w Black Friday
+      wolumen_min: 0.3
+      wolumen_max: 3.5
+      dni_historii: 28
+      min_dni_historii: 14

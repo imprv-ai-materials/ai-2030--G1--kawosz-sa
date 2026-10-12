@@ -17,7 +17,7 @@ PRZYKLADY = [
     pytest.param(
         erp.ERP_01,
         "UPDATE erp_faktury SET waluta = 'EUR' WHERE nr_faktury = 'FV/2026/09/00002'",
-        "waluta: equal_to(PLN)",
+        "waluta: isin(['PLN'])",
         1,
         id="ERP-01 faktura w EUR",
     ),

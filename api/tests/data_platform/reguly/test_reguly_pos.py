@@ -4,6 +4,8 @@ import pytest
 
 from api.data_platform.reguly import pos
 
+NAGLOWEK = pos.KONTRAKT.wymagane  # nagłówek pliku z kasy zgodny z kontraktem
+
 NOWY_PARAGON = (
     "INSERT INTO pos_paragony (lokal, nr_paragonu, data_czas, kanal, kwota_brutto, metoda_platnosci, storno, plik)"
 )
@@ -17,13 +19,6 @@ PRZYKLADY = [
         "storno: isin([0, 1])",
         1,
         id="POS-01 storno spoza slownika",
-    ),
-    pytest.param(
-        pos.POS_01,
-        "ALTER TABLE pos_paragony ADD COLUMN rabat DOUBLE",
-        "nieoczekiwana kolumna rabat",
-        2,
-        id="POS-01 nowa kolumna w pliku z kasy",
     ),
     pytest.param(
         pos.POS_02,
@@ -103,7 +98,7 @@ PRZYKLADY = [
     pytest.param(
         pos.POS_10,
         "INSERT INTO lokale VALUES (2, 'Kawosz Gdańsk – ul. Długa 1', 'Gdańsk', 'ul. Długa 1', DATE '2026-01-01')",
-        "lokal ma paragony z dnia (poza 1.01, Wielkanocą i 25.12)",
+        "lokal ma paragony z dnia (dni zamknięte: 1.01, Wielkanoc, 25.12)",
         1,
         id="POS-10 otwarty lokal bez pliku z dnia",
     ),
@@ -117,6 +112,35 @@ PRZYKLADY = [
         "paragony = 0.4–1.8 × mediana z 28 dni",
         1,
         id="POS-11 dzien z podwojnym wolumenem",
+    ),
+    pytest.param(
+        pos.POS_12,
+        # jak od 1.06.2026: kasa wstawia `kanal` po `data_czas`; reszta kolumn kontraktu zostaje w kolejności
+        f"UPDATE pos_pliki SET kolumny = {NAGLOWEK[:3] + ['kanal'] + NAGLOWEK[3:]}",
+        "kolumna spoza kontraktu",
+        1,
+        id="POS-12 nowa kolumna w srodku pliku",
+    ),
+    pytest.param(
+        pos.POS_12,
+        f"UPDATE pos_pliki SET kolumny = {[k for k in NAGLOWEK if k != 'storno']}",
+        "brak kolumny z kontraktu",
+        1,
+        id="POS-12 brak kolumny storno",
+    ),
+    pytest.param(
+        pos.POS_12,
+        f"UPDATE pos_pliki SET kolumny = {NAGLOWEK[:3] + [NAGLOWEK[4], NAGLOWEK[3]] + NAGLOWEK[5:]}",
+        "kolumna w innej kolejności niż w kontrakcie",
+        2,
+        id="POS-12 zamienione kolumny kwoty i metody platnosci",
+    ),
+    pytest.param(
+        pos.POS_13,
+        "UPDATE pos_pliki SET czas_dostawy = TIMESTAMP '2026-10-01 07:30:00'",
+        "plik dotarł w terminie (D+1 do 6:00)",
+        1,
+        id="POS-13 plik po 6:00 nastepnego dnia",
     ),
 ]
 
@@ -140,11 +164,28 @@ def test_kazda_regula_ma_zly_przyklad():
 
 
 def test_storno_ze_wskazaniem_paragonu_przechodzi(baza, sprawdz):
-    """Gdy kasa doda numer stornowanego paragonu, POS-09 przechodzi, a typy z POS-01 nadal się zgadzają."""
+    """Gdy kasa doda na końcu pliku numer stornowanego paragonu, POS-09 przechodzi, a POS-01 i POS-12 go przyjmują:
+    kontrakt przewiduje tę kolumnę jako opcjonalną, więc nie trzeba nowej wersji."""
     baza.execute(f"""ALTER TABLE pos_paragony ADD COLUMN nr_paragonu_stornowanego BIGINT;
+            UPDATE pos_pliki SET kolumny = {NAGLOWEK + ['nr_paragonu_stornowanego']};
             {NOWY_PARAGON.replace(", plik)", ", plik, nr_paragonu_stornowanego)")}
             VALUES (1, 2609300003, TIMESTAMP '2026-09-30 08:05:00', 'sala', -14.00, 'karta', 1, {PLIK}, 2609300001);
             INSERT INTO pos_pozycje VALUES (1, 2609300003, 'P0101', -1, 14.0, 8)""")
-    for regula in [pos.POS_01, pos.POS_08, pos.POS_09]:
+    for regula in [pos.POS_01, pos.POS_08, pos.POS_09, pos.POS_12]:
         wynik = sprawdz(regula)
         assert wynik.ok, (regula.id, wynik.naruszenia)
+
+
+def test_kolumna_spoza_kontraktu_w_tabeli_nie_lamie_pos_01(baza, sprawdz):
+    """Tabela pos_paragony ma `kanal` z plików od 1.06.2026 (łączenie po nazwach), także dla starszych dni (NULL).
+    To nie błąd paragonu: który plik przysłał obcą kolumnę, sprawdza POS-12 na rejestrze plików."""
+    baza.execute("UPDATE pos_paragony SET kanal = NULL")
+    assert sprawdz(pos.POS_01).ok
+    assert sprawdz(pos.POS_12).ok
+
+
+def test_plik_bez_czasu_dostawy_nie_jest_sprawdzany(baza, sprawdz):
+    """Archiwum ZIP nie ma czasu dostawy: POS-13 nie zgłasza błędu, ale też niczego nie sprawdza."""
+    baza.execute("UPDATE pos_pliki SET czas_dostawy = NULL")
+    wynik = sprawdz(pos.POS_13)
+    assert wynik.ok and wynik.wiersze == 0

@@ -1,11 +1,13 @@
 # Reguły jakości danych: POS, ERP, e-commerce
 
-Cel: błędy z [`skala_problemu.md`](skala_problemu.md) mają nie wracać co noc. Poniżej 37 reguł, które po każdym ładowaniu sprawdzają nowe dane z POS (11), ERP (14) i e-commerce (12). Każda reguła ma poziom (blokuje albo ostrzega), właściciela i numer pozycji ze `skala_problemu.md`, którą łapie.
+Cel: błędy z [`skala_problemu.md`](skala_problemu.md) mają nie wracać co noc. Poniżej 39 reguł, które po każdym ładowaniu sprawdzają nowe dane z POS (13), ERP (14) i e-commerce (12). Każda reguła ma poziom (blokuje albo ostrzega), właściciela i numer pozycji ze `skala_problemu.md`, którą łapie.
 
+- **Kontrakty:** [`api/api/data_platform/kontrakty/`](../api/api/data_platform/kontrakty/), po jednym pliku YAML na źródło: `pos_paragony.yaml`, `ecom_zamowienia.yaml`, `erp_faktury.yaml`. Kontrakt zawiera właściciela, wersję, termin i format dostawy, kolumny z typami i słownikami oraz reguły źródła: opis, poziom, właściciela, pozycje ze skali, progi i to, co zrobić przy naruszeniu. To jedyne miejsce tych wartości. Reguły i `load_raw.py` czytają je z kontraktu, a `kontrakt.py` odrzuca kontrakt z błędem (literówka w kluczu, nieznany typ, parametr brakujący w opisie).
 - **Kod:** [`api/api/data_platform/reguly/`](../api/api/data_platform/reguly/), po jednym pliku na źródło: `pos.py`, `erp.py`, `ecom.py`. Wspólny kształt reguły jest w `regula.py`, uruchomienie w `uruchom.py`, a raport w Markdown w `raport.py`.
-- **Budowa reguły:** zapytanie SQL do `kawosz.duckdb` przygotowuje ramkę (złączenia i agregaty liczy DuckDB), a schemat Pandery (`DataFrameSchema`) ją sprawdza. Poziom, właściciel, jednostka rekordu i pozycje ze skali są w `metadata` schematu.
+- **Budowa reguły:** zapytanie SQL do `kawosz.duckdb` przygotowuje ramkę (złączenia i agregaty liczy DuckDB), a schemat Pandery (`DataFrameSchema`) ją sprawdza. Schemat buduje `Kontrakt.schemat()`: kolumny i warunki pochodzą z kodu reguły, a opis, poziom, właściciel, jednostka i pozycje ze skali z kontraktu.
 - **Testy:** [`api/tests/data_platform/reguly/`](../api/tests/data_platform/reguly/). Każda reguła ma co najmniej jeden mały przykład danych, który ją łamie, i test, że go łapie (szczegóły niżej).
-- **Raport naruszeń za wrzesień 2026:** [`naruszenia_2026-09.md`](naruszenia_2026-09.md).
+- **Raport naruszeń za wrzesień 2026:** [`naruszenia_2026-09.md`](naruszenia_2026-09.md) (stan sprzed kontraktów, bez POS-12 i POS-13).
+- **Sprawdzenie kontraktu POS za 2026 rok, miesiąc po miesiącu:** [`kontrakt_pos_2026.md`](kontrakt_pos_2026.md).
 - **Wyniki w tym dokumencie** pochodzą z `kawosz.duckdb` (dane do 30.09.2026).
 
 ## Jak uruchomić
@@ -21,11 +23,17 @@ PYTHONPATH=api poetry run python -m api.data_platform.reguly.uruchom --dzien 202
 - Przegląd okresu: `--od 2026-09-01 --dzien 2026-09-30`. Wybór źródeł: `--zrodlo pos erp`. Wybór reguł: `--regula POS-02 ERP-06`. Inny plik bazy: `--baza ścieżka.duckdb`.
 - Dla każdej reguły, która nie przeszła, runner wypisuje naruszone warunki z liczbą wierszy i trzy przykładowe wiersze.
 - `--raport plik.md` zapisuje raport naruszeń w Markdown: dla każdej reguły liczbę rekordów, naruszone warunki, 5 przykładów i informację, czy blokuje wsad. Tak powstał [`naruszenia_2026-09.md`](naruszenia_2026-09.md).
+- Sprawdzenie kontraktu miesiąc po miesiącu, z komunikatami prostym językiem (który kontrakt, która kolumna, od którego dnia, co zrobić). Tak powstał [`kontrakt_pos_2026.md`](kontrakt_pos_2026.md):
+
+  ```bash
+  PYTHONPATH=api poetry run python -m api.data_platform.kontrakty.sprawdz pos_paragony \
+      --od 2026-01-01 --do 2026-09-30 --raport docs/kontrakt_pos_2026.md
+  ```
 - Wszystkie naruszenia są zbierane naraz. Każda reguła sprawdza wszystkie wiersze (Pandera `lazy=True`), a runner uruchamia wszystkie reguły. Jeśli reguły nie da się wykonać (np. brak tabeli), runner zapisuje błąd i przechodzi do następnej. Reguła blokująca, której nie udało się sprawdzić, blokuje wsad.
 
 **Zakres jednej nocy:**
 - Reguły biorą dane z dnia eksportu w czasie Europe/Warsaw:
-  - POS: dzień z `data_czas`, a dla pozycji z numeru paragonu;
+  - POS: dzień z `data_czas`, dla pozycji z numeru paragonu, a dla pliku z jego nazwy;
   - ERP: `data` dokumentu;
   - e-commerce: `data_utc` przeliczone na czas polski.
 - Kartotekę i kontrahentów sprawdzamy tylko w zakresie, którego dotyczą dokumenty z tej nocy.
@@ -56,7 +64,7 @@ Właściciel to rola, której trzeba przypisać konkretną osobę.
 | Właściciel | Odpowiada za |
 |---|---|
 | Zespół danych | ładowanie, klucze, złączenia, sumy nagłówków z pozycjami, świeżość i wolumen |
-| Operacje lokali (POS) | treść paragonów: ceny, metoda płatności, zwroty, storna |
+| Operacje lokali (POS) | treść paragonów: ceny, metoda płatności, zwroty, storna; układ i terminowość plików z kas (kontakt z dostawcą POS) |
 | E-commerce | treść zamówień, cennik sklepu, subskrypcje, karty podarunkowe |
 | Finanse i księgowość | dokumenty ERP, VAT, NIP, korekty, nietypowe faktury |
 | Dane podstawowe (kartoteka ERP) | kategorie i nazwy indeksów |
@@ -70,7 +78,7 @@ Kolumna „IX 2026” podaje, ile jednostek nie przeszło reguły przy sprawdzen
 
 | Reguła | Co sprawdza | Poziom | Właściciel | Pozycja ze `skala_problemu.md` | IX 2026 |
 |---|---|---|---|---|---|
-| POS-01 | Typy: paragon ma dokładnie oczekiwane kolumny i typy, a storno (0/1), kanał i metoda płatności mają wartości ze słowników | blokuje | Zespół danych | zapobiegawcza: nowa lub zmieniona kolumna w pliku z kasy | 0 |
+| POS-01 | Typy: paragon ma kolumny z kontraktu o typach z kontraktu, a storno (0/1) i metoda płatności mają wartości ze słowników. Kolumn spoza kontraktu w tabeli nie sprawdza, bo tabela łączy pliki po nazwach (to robi POS-12) | blokuje | Zespół danych | zapobiegawcza | 0 |
 | POS-02 | Unikalność: para (`lokal`, `nr_paragonu`) występuje raz | blokuje | Zespół danych | #15 zdublowane pliki paragonów | 988 paragonów |
 | POS-03 | Spójność: plik ma nazwę `pos_paragony_{lokal}_{dzień}.csv`, data w numerze = data paragonu, numeracja w dniu rośnie z czasem (bez storn) | blokuje | Zespół danych | #15 (pliki „(1)”), #24 (paragon 48 000 zł ma numer poza kolejnością) | 988 paragonów |
 | POS-04 | Brutto nagłówka i pozycji: suma `kwota_brutto` lokalu w dniu = Σ `ilosc × cena_brutto`, a liczba paragonów = liczba paragonów w pozycjach | blokuje | Zespół danych | #15, #25 (test sum w potoku) | 3 lokalo-dni |
@@ -81,6 +89,8 @@ Kolumna „IX 2026” podaje, ile jednostek nie przeszło reguły przy sprawdzen
 | POS-09 | Storno wskazuje numer paragonu, który stornuje (kolumna `nr_paragonu_stornowanego`) | ostrzega | Operacje lokali (POS) | #19 storna bez powiązania | 134 storna (brak kolumny) |
 | POS-10 | Świeżość: każdy otwarty lokal przysłał paragony za każdy dzień do dnia eksportu, z wyjątkiem 1.01, Wielkanocy i 25.12 | blokuje | Zespół danych | zapobiegawcza: brak pliku zaniża przychód | 0 |
 | POS-11 | Liczba wierszy: paragony lokalu w dniu = 0,4–1,8 × mediana tego lokalu z 28 poprzednich dni | ostrzega | Zespół danych | #15 (dzień zdublowany ma ok. 2 ×) | 3 lokalo-dni |
+| POS-12 | Układ pliku: plik z kasy ma kolumny z kontraktu w kolejności z kontraktu i żadnych innych; kolumnę opcjonalną (`nr_paragonu_stornowanego`) kasa może dopisać na końcu. Sprawdza rejestr plików `pos_pliki`, który zapisuje `load_raw` | blokuje | Operacje lokali (POS) | zapobiegawcza: nowa, brakująca lub przestawiona kolumna w pliku z kasy | 723 pliki (`kanal` od 1.06.2026) |
+| POS-13 | Termin dostawy: plik za dzień D dotarł do D+1 6:00 (termin z kontraktu) | ostrzega | Operacje lokali (POS) | zapobiegawcza | nie sprawdzono: archiwum nie ma czasu dostawy |
 
 ### ERP (`erp.py`)
 
@@ -122,7 +132,8 @@ Kolumna „IX 2026” podaje, ile jednostek nie przeszło reguły przy sprawdzen
 
 ### Noc 30.09.2026
 
-Runner kończy się kodem 1. Blokują dwie reguły:
+Runner kończy się kodem 1. Blokują trzy reguły:
+- **POS-12:** wszystkie 24 pliki z kas mają kolumnę `kanal`, której nie ma w kontrakcie;
 - **ERP-06:** 776 pozycji z faktur z 30.09 bez kategorii;
 - **ERP-08:** 57 dokumentów wystawionych na zdublowanych kontrahentów.
 
@@ -130,7 +141,7 @@ Ostrzega 11 reguł: POS-08, POS-09, ERP-03, ERP-07, ERP-09, ERP-10, ERP-12, ECOM
 
 ### Każda noc września
 
-Reguły uruchomione osobno dla każdego dnia września zablokowałyby 14 z 30 nocy:
+Reguły uruchomione osobno dla każdego dnia września zablokowałyby wszystkie 30 nocy, bo POS-12 blokuje każdą noc od 1.06.2026 (kolumna `kanal`, patrz [`kontrakt_pos_2026.md`](kontrakt_pos_2026.md)). Bez POS-12 zablokowanych byłoby 14 nocy:
 - **ERP-06:** 12 nocy, bo faktury ze środka miesiąca też mają indeksy bez kategorii;
 - **POS-02, POS-03, POS-04:** 11–13.09, zdublowane pliki z lokalu 17;
 - **ERP-08:** 25.09 i 30.09.
@@ -169,7 +180,7 @@ Wrzesień 2026, kolumna „Rekordy (IX 2026)” ze skali:
 
 ### Reguły zapobiegawcze
 
-15 reguł nie znajduje nic w całej historii: POS-01, POS-05, POS-10, ERP-01, ERP-02, ERP-04, ERP-05, ERP-13, ERP-14, ECOM-01, ECOM-02, ECOM-03, ECOM-09, ECOM-11 i ECOM-12. Pilnują rzeczy, które dziś są w porządku, a od których zależą raporty (patrz [profil danych](profil_danych.md#1-najważniejsze-ustalenia), §1 pkt 10).
+15 reguł nie znajduje nic w całej historii: POS-01, POS-05, POS-10, ERP-01, ERP-02, ERP-04, ERP-05, ERP-13, ERP-14, ECOM-01, ECOM-02, ECOM-03, ECOM-09, ECOM-11 i ECOM-12. POS-12 znajduje zmianę układu pliku z 1.06.2026, której wcześniejsza wersja POS-01 nie widziała, bo sprawdzała tabelę po złączeniu plików i miała `kanal` wpisany w schemat. POS-13 nie ma na czym działać, dopóki loader nie zapisuje czasu dostawy. Pilnują rzeczy, które dziś są w porządku, a od których zależą raporty (patrz [profil danych](profil_danych.md#1-najważniejsze-ustalenia), §1 pkt 10).
 
 Każdą sprawdziłem na celowo zepsutych danych i każda złapała błąd. Przykłady:
 - dodatkowa kolumna w pliku z kasy (POS-01);
@@ -187,10 +198,10 @@ Na dniu bez eksportu (5.10.2026) blokują POS-10 i ECOM-11, a na 6.10 także ERP
 
 ## Testy
 
-Testy leżą w [`api/tests/data_platform/reguly/`](../api/tests/data_platform/reguly/) i działają bez `kawosz.duckdb`.
+Testy leżą w [`api/tests/data_platform/reguly/`](../api/tests/data_platform/reguly/) i [`api/tests/data_platform/kontrakty/`](../api/tests/data_platform/kontrakty/) i działają bez `kawosz.duckdb`.
 
-- `conftest.py` buduje w pamięci małą bazę DuckDB o tych samych tabelach i typach co `kawosz.duckdb`: jeden lokal, dwa paragony, dwie faktury, dwa zamówienia, dwie subskrypcje, jedna karta. Czyste dane przechodzą wszystkie 37 reguł.
-- `test_reguly_pos.py`, `test_reguly_erp.py` i `test_reguly_ecom.py` mają listę `PRZYKLADY`: zapytanie SQL, które psuje czyste dane w jeden sposób, oczekiwane naruszenie i liczbę rekordów, które reguła ma oznaczyć. Dla 37 reguł są 44 przykłady. Przykład: paragon z zakupem ziarna (+169 zł) i zwrotem latte (−1 szt.), z dodatnią sumą i `storno = 0`, musi wpaść do POS-08.
+- [`api/tests/data_platform/conftest.py`](../api/tests/data_platform/conftest.py) buduje w pamięci małą bazę DuckDB o tych samych tabelach i typach co `kawosz.duckdb`: jeden lokal, dwa paragony z jednego pliku (w rejestrze `pos_pliki`), dwie faktury, dwa zamówienia, dwie subskrypcje, jedna karta. Czyste dane przechodzą wszystkie 39 reguł.
+- `test_reguly_pos.py`, `test_reguly_erp.py` i `test_reguly_ecom.py` mają listę `PRZYKLADY`: zapytanie SQL, które psuje czyste dane w jeden sposób, oczekiwane naruszenie i liczbę rekordów, które reguła ma oznaczyć. Dla 39 reguł jest 47 przykładów. Przykład: paragon z zakupem ziarna (+169 zł) i zwrotem latte (−1 szt.), z dodatnią sumą i `storno = 0`, musi wpaść do POS-08.
 - Test `test_kazda_regula_ma_zly_przyklad` pilnuje, że nowa reguła nie przejdzie bez przykładu.
 - Dla POS-09, ERP-12 i ECOM-07 jest też test odwrotny: gdy źródło doda wymagane pole, reguła przechodzi, a reguła typów (POS-01, ERP-01, ECOM-01) go nie odrzuca.
 - `test_uruchom.py` sprawdza runner:
@@ -200,7 +211,10 @@ Testy leżą w [`api/tests/data_platform/reguly/`](../api/tests/data_platform/re
   - treść raportu jest poprawna;
   - kod wyjścia to 1 przy regule blokującej.
 
-Uruchomienie: `pypyr test` albo `poetry run pytest api/tests`. Wynik: 95 testów przechodzi.
+- `test_kontrakt.py` sprawdza, że reguły każdego źródła odpowiadają regułom z kontraktu (te same identyfikatory, opisy, poziomy, właściciele), a zepsuty kontrakt (9 przykładów) nie daje się wczytać.
+- `test_sprawdz.py` sprawdza komunikaty: nowa kolumna w pliku łamie kontrakt, a komunikat podaje kontrakt, wersję, kolumnę, miejsce w pliku, dzień, od którego trwa złamanie, i co zrobić.
+
+Uruchomienie: `pypyr test` albo `poetry run pytest api/tests`. Wynik: 146 testów przechodzi (razem z testami mapy kontrahentów).
 
 Celowo zepsułem kod sześć razy i za każdym razem testy to wykryły:
 - POS-08 cofnięta do starej wersji, która sprawdzała tylko ujemną sumę;
@@ -233,3 +247,5 @@ Celowo zepsułem kod sześć razy i za każdym razem testy to wykryły:
 3. **Stawka 5% dla `20.01.0001` (mleko UHT) w ERP-03.** To założenie do potwierdzenia przez księgowość, tak jak w skali (#12 „do weryfikacji”). Kartoteka nie ma kolumny ze stawką VAT. Docelowo stawka powinna być w kartotece, a nie w kodzie reguły.
 4. **Reguły wymagające nowych pól:** POS-09, ERP-12, ECOM-07 i ECOM-10. Będą ostrzegać każdej nocy, dopóki dostawcy POS, ERP i sklepu nie dodadzą pól: numeru paragonu stornowanego, numeru faktury korygowanej, daty i kwoty zwrotu oraz metody „karta podarunkowa”.
 5. **Wykluczanie zamówień testowych w potoku.** ECOM-05 tylko je wskazuje i nie usuwa ich ze sprzedaży.
+6. **Kolumna `kanal` w plikach z kas.** Kasy przysyłają ją od 1.06.2026 bez zgłoszenia, więc łamie kontrakt POS 1.0.0 (POS-12 blokuje każdą noc). Jeśli Operacje lokali potwierdzą z dostawcą POS, co znaczy i że zostaje, można ją dopisać do kontraktu jako wersję 1.1.0 (słownik sala / wynos / aplikacja, pusta przed 1.06.2026). Jeśli nie zostaje, dostawca wraca do układu z kontraktu.
+7. **Terminy dostawy w kontraktach.** „D+1 do 6:00” dla wszystkich trzech źródeł to propozycja do akceptacji przez właścicieli. Sprawdzić da się go tylko w POS i tylko wtedy, gdy loader zapisze czas dotarcia pliku (`pos_pliki.czas_dostawy`); dla ERP i e-commerce trzeba podobnego rejestru.
