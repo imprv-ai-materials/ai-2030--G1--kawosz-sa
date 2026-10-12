@@ -10,8 +10,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="pl">
-      <body>{children}</body>
+    // Rozszerzenia przeglądarki (np. LanguageTool: data-lt-installed, Grammarly) dopisują atrybuty do <html>
+    // i <body>, zanim React przejmie stronę. suppressHydrationWarning wycisza tylko różnice atrybutów tych dwóch
+    // elementów, a nie zawartości panelu.
+    <html lang="pl" suppressHydrationWarning>
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }
