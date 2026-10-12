@@ -208,3 +208,189 @@ FROM erp_faktury f ANTI JOIN erp_platnosci p USING (nr_faktury) WHERE f.typ = 'f
 ```
 
 Wiersz 5 pochodzi z `docs/trzy_przychody.md`: liczby z raportów (8,31 / 8,06 / 7,92 mln) minus wyniki dosłowne (8 236 905,07 / 7 850 731,29 / 8 059 085,00 zł).
+
+## Scalenie zdublowanych kontrahentów (`mapa_kontrahentow`)
+
+Dopisane 12.10.2026, dotyczy wierszy 4, 14 i 27. Scalenie nie zmienia tabel źródłowych. Dodaje tylko tabelę `mapa_kontrahentow` w `kawosz.duckdb`.
+
+- **Kod:** [`api/api/data_platform/mapa_kontrahentow.py`](../api/api/data_platform/mapa_kontrahentow.py), testy w [`api/tests/data_platform/test_mapa_kontrahentow.py`](../api/tests/data_platform/test_mapa_kontrahentow.py).
+- **Uruchomienie:** `PYTHONPATH=api poetry run python -m api.data_platform.mapa_kontrahentow`. Moduł buduje mapę od nowa i ją zapisuje. Potem porównuje sumę faktur w każdym miesiącu przed scaleniem i po nim, a przy różnicy kończy się błędem.
+- **Tabela `mapa_kontrahentow`** ma jeden wiersz na każdy rekord kontrahenta: 2 029 wierszy, w tym 1 512 aktywnych i 517 z archiwum. Kolumny:
+  - `id_stary` → `id_nowy`: dla rekordu bez duplikatu oba są równe;
+  - `zrodlo`: tabela, z której pochodzi rekord;
+  - `podstawa`: dlaczego rekord scalono;
+  - `do_decyzji`: rekord należy do pary wątpliwej, dla której nie ma jeszcze decyzji.
+
+  Mapa obejmuje każdy dokument z `erp_faktury`, więc złączenie `JOIN mapa_kontrahentow ON id_stary = id_kontrahenta` niczego nie gubi.
+
+### Jak porównuję
+
+Każdy rekord porównuję z każdym innym, także z archiwum, według trzech kryteriów:
+- **nazwa po ujednoliceniu:**
+  - wielkie litery;
+  - polskie znaki zamienione na łacińskie (Ł → L);
+  - bez interpunkcji;
+  - jedna forma prawna: „Sp. z o.o.”, „spółka z o.o.” i „SP Z OO” → `SPZOO`, „S.A.” i „Spółka Akcyjna” → `SA`.
+
+  Forma prawna zostaje w nazwie, więc „Omega S.A.” i „Omega Sp. z o.o.” to różne nazwy.
+- **NIP:** same cyfry.
+- **kod pocztowy:** porównywany bez zmian, bo zawsze ma format `00-000`.
+
+Parą-kandydatem są dwa rekordy z tą samą nazwą albo tym samym NIP-em. Sam kod pocztowy nie wystarcza, bo pod jednym kodem jest wiele firm.
+
+| Klasa | Reguła | Co robię |
+|---|---|---|
+| pewna | ten sam NIP i ten sam kod pocztowy | scalam |
+| wątpliwa | ten sam NIP przy innym kodzie (np. oddział) albo ta sama nazwa i kod przy innym NIP-ie | decyduje człowiek, bo scalenie oznacza też poprawkę NIP-u w ERP |
+| odrzucona | ta sama nazwa, ale inny NIP i inny kod | nie scalam: to różne firmy o tej samej nazwie |
+
+Nowy identyfikator to najmniejszy ID w grupie. W każdej parze jest to starszy rekord (200xxx–201xxx), który ma historię faktur i zwykle ID z CRM. Rekord 26xxxx przejmuje jego ID.
+
+### Wynik
+
+| NIP | Nazwa | Kod | Pary | Klasa |
+|---|---|---|---:|---|
+| ✓ | ✓ | ✓ | 84 | pewna, scalona |
+| ✓ | ✗ | ✓ | 21 | pewna, scalona |
+| ✗ | ✓ | ✓ | 7 | wątpliwa, do decyzji |
+| ✗ | ✓ | ✗ | 14 | odrzucona |
+
+- **2 029 rekordów to 1 924 kontrahentów. Po zatwierdzeniu 7 wątpliwych par będzie ich 1 917,** czyli tyle, ile biur jest w CRM (`crm_biura`: 1 917 wierszy, 1 917 różnych NIP-ów). To niezależne potwierdzenie, że scalanie niczego nie pominęło i nie połączyło za dużo.
+- **Każda ze 112 par (pewnych i wątpliwych) to rekord 26xxxx i starszy rekord.** Potwierdzają to też fakty spoza trzech kryteriów:
+  - oba rekordy mają tę samą ulicę;
+  - nigdy nie dostały faktury w tym samym miesiącu, a ERP fakturuje klienta raz w miesiącu;
+  - nie mają sprzecznych ID z CRM.
+- **21 pewnych par ma różne nazwy.** Rekord 26xxxx gubi pierwsze słowo, np. „HUB KAMIENICA SP. Z O.O.” → „KAMIENICA SP Z OO”. W 13 z tych par skrócona nazwa jest identyczna z nazwą innej firmy, np. 200141 „Kamienica Sp. z o.o.”. Tamta firma ma jednak inny NIP, kod i ulicę, więc decydują NIP i kod.
+- **14 odrzuconych par to różne firmy o tej samej nazwie.**
+  - W każdej parze NIP, kod i ulica są różne.
+  - Po scaleniu zostaje z nich 13 par firm, bo dwie pary Omegi wskazują tę samą parę. W 12 z 13 obie firmy dostają faktury w tych samych miesiącach (od 4 do 33 miesięcy).
+  - Wyjątkiem jest „Czwórka Sp. z o.o.” z archiwum (200136). W CRM to osobne biuro z innym NIP-em niż 201841 „Park Czwórka”.
+
+### Pary wątpliwe do decyzji
+
+**Wątpliwych par jest 7, a nie 5.** Wszystkie mają ten sam wzorzec, więc pokazuję wszystkie. Każda para spełnia cztery warunki:
+- nazwa po ujednoliceniu, kod pocztowy i ulica są takie same;
+- NIP rekordu 26xxxx ma 9 cyfr, więc jest niepoprawny, i jest NIP-em rekordu głównego bez jednej cyfry;
+- rekord 26xxxx nie ma ID z CRM, a w CRM jest jedno biuro o tej nazwie i ma 10-cyfrowy NIP rekordu głównego;
+- oba rekordy nigdy nie dostały faktury w tym samym miesiącu.
+
+**Rekomendacja:** scalić wszystkie 7 i poprawić w ERP NIP rekordu 26xxxx na NIP rekordu głównego. To 7 z 15 NIP-ów bez 10 cyfr z wiersza 14. We wrześniu te rekordy dostały 5 faktur z błędnym NIP-em na 16 223,93 zł.
+
+| # | Rekord główny | Rekord 26xxxx | NIP: główny / 26xxxx | Kod, ulica | Miesiące z fakturą: główny / 26xxxx | Rekomendacja | Decyzja |
+|---:|---|---|---|---|---|---|---|
+| 1 | 200323 Kancelaria Aleja Sp. z o.o. | 260081 KANCELARIA ALEJA SP Z OO | 739-031-90-19 / 739039019 | 62-793, ul. Kasprzaka 169 | 20 / 13 | scalić | |
+| 2 | 200410 Agencja Wielkopolska Sp. z o.o. | 260053 AGENCJA WIELKOPOLSKA SP Z OO | 3050519875 / 305059875 | 04-762, ul. Al. Solidarności 155 | 22 / 11 | scalić | |
+| 3 | 200430 LABORATORIUM SOŁACZ SP. Z O.O. | 260039 LABORATORIUM SOŁACZ SP Z OO | 1627308658 / 162308658 | 03-869, ul. Lipowa 43 | 20 / 13 | scalić | |
+| 4 | 200783 KWIATKOWSKI I WSPÓLNICY SP. Z O.O. | 260099 Kwiatkowski i Wspólnicy spółka z o.o. | 859-970-80-29 / 859970809 | 53-628, ul. Dąbrowskiego 129 | 24 / 9 | scalić | |
+| 5 | 201061 Fundacja Pryzmat Sp. z o.o. | 260098 FUNDACJA PRYZMAT SP Z OO | 1402342878 / 142342878 | 81-830, ul. Leśna 178 | 18 / 15 | scalić | |
+| 6 | 201553 LABORATORIUM METEOR SP. Z O.O. | 260085 Laboratorium Meteor spółka z o.o. | 489-538-06-34 / 489380634 | 70-651, ul. Garbary 105 | 12 / 10 | scalić | |
+| 7 | 201678 Spółdzielnia Kwadrant Sp. z o.o. | 260063 SPÓŁDZIELNIA KWADRANT SP Z OO | 4711220287 / 471122027 | 61-155, ul. Wierzbięcice 176 | 7 / 8 | scalić | |
+
+Decyzje wpisuje się do słownika `DECYZJE` w `mapa_kontrahentow.py`, np. `(200323, 260081): True`. `True` scala parę, a `False` zostawia rekordy osobno. Potem trzeba ponownie uruchomić moduł. Dopóki para nie ma decyzji, jej rekordy zostają osobno i mają `do_decyzji = true`.
+
+### Suma faktur za wrzesień przed i po scaleniu
+
+„Przed” to `erp_faktury` według `id_kontrahenta`. „Po” to te same dokumenty po złączeniu z `mapa_kontrahentow`, liczone według `id_nowy`. Dokumenty to faktury i korekty z datą 1–30.09.2026.
+
+| | Przed scaleniem | Po scaleniu | Po zatwierdzeniu 7 par |
+|---|---:|---:|---:|
+| Dokumenty (1 408 faktur i 37 korekt) | 1 445 | 1 445 | 1 445 |
+| **Netto** | **4 858 331,65** | **4 858 331,65** | **4 858 331,65** |
+| Brutto | 5 975 747,95 | 5 975 747,95 | 5 975 747,95 |
+| Kontrahenci z dokumentem | 1 409 | 1 408 | 1 408 |
+| Dokumenty na rekordach 26xxxx | 58 (224 529,31) | 5 (16 223,93) | 0 |
+| Dokumenty kontrahentów bez ID z CRM | 148 (536 441,73) | 109 (371 955,35) | 104 (355 731,42) |
+
+**Różnica sumy wynosi 0,00 zł i tak ma być.**
+- Scalenie zmienia tylko to, do którego kontrahenta należy dokument. Nie dodaje ani nie usuwa żadnej faktury.
+- Każdy `id_kontrahenta` z faktur ma w mapie dokładnie jeden wiersz, więc złączenie niczego nie gubi i niczego nie mnoży.
+- Moduł sprawdza to przy każdym uruchomieniu we wszystkich 33 miesiącach.
+
+**Co scalenie zmienia:**
+- **Kontrahentów z dokumentem jest tylko o 1 mniej**, bo dwa rekordy tej samej firmy nie dostają faktury w tym samym miesiącu. Jedyny wyjątek we wrześniu to korekta. Kompas Tech ma korektę KOR/2026/09/0023 (−912,53 zł) na rekordzie 201568 i fakturę FV/2026/09/01388 (3 125,87 zł) na rekordzie 260070. Przed scaleniem był liczony jako dwóch kontrahentów.
+- **53 dokumenty na 208 305,38 zł przechodzą z rekordów 26xxxx na rekordy główne.** Sprzedaż tych klientów nie jest już rozbita na dwa rekordy.
+- **39 dokumentów na 164 486,38 zł zyskuje ID z CRM** (wiersz 2). Rekordy 26xxxx zwykle nie mają tego ID, a rekord główny ma. Po zatwierdzeniu 7 par będzie to 44 dokumenty na 180 710,31 zł.
+- **Zmienia się historia klientów.**
+  - W ostatnich 12 miesiącach (X.2025–IX.2026) dokumenty ma 1 592 kontrahentów, a nie 1 695.
+  - Mediana netto na kontrahenta rośnie z 26 306,50 do 27 904,75 zł.
+
+  Liczba klientów, odejścia i przychód na klienta liczone przed scaleniem są więc przekłamane, chociaż suma przychodu jest poprawna.
+
+**Skąd mogłaby się wziąć różnica.** Jeśli suma po scaleniu wyjdzie inna, winne jest złączenie, a nie scalenie. Wpływ każdego błędu na wrzesień, mierzony osobno:
+
+| Sposób złączenia | Dokumenty | Zmiana sumy netto |
+|---|---:|---:|
+| `JOIN mapa_kontrahentow` (mapa ma wszystkie rekordy) | 1 445 | 0,00 |
+| mapa tylko ze scalonymi rekordami, INNER JOIN | 53 | −4 650 026,27 |
+| mapa tylko z `erp_kontrahenci` (bez archiwum), INNER JOIN | 1 437 | −10 928,98 |
+| łączenie po NIP-ie ze wszystkimi rekordami, bez scalenia (wiersz 27) | 1 553 | +400 049,68 |
+| łączenie po NIP-ie tylko z rekordami głównymi, po scaleniu | 1 445 | 0,00 |
+
+Dlatego mapa ma wszystkie rekordy, także te bez duplikatu i te z archiwum. Łączenie z CRM lub innym rejestrem po NIP-ie jest bezpieczne dopiero po scaleniu, na rekordach głównych.
+
+### SQL scalenia
+
+Ujednolicenie nazw, pary i klasy są w module (`MAKRA`, `PARY`, `DOWODY`). Liczby z tej sekcji:
+
+```sql
+-- Wariant „po zatwierdzeniu 7 par”: rekord 26xxxx z pary wątpliwej → rekord główny tej pary
+CREATE OR REPLACE TEMP TABLE mapa_7 AS
+SELECT m.id_stary, coalesce(p.id_glowny, m.id_nowy) AS id_nowy
+FROM mapa_kontrahentow m
+LEFT JOIN (VALUES (260081, 200323), (260053, 200410), (260039, 200430), (260099, 200783),
+                  (260098, 201061), (260085, 201553), (260063, 201678)) p(id_26, id_glowny) ON p.id_26 = m.id_stary;
+
+-- Faktury ERP za wrzesień 2026 przed scaleniem i po nim
+CREATE OR REPLACE TEMP TABLE kontr AS
+SELECT id_kontrahenta, id_biura_crm FROM erp_kontrahenci UNION ALL SELECT id_kontrahenta, id_biura_crm FROM erp_kontrahenci_archiwum;
+WITH wrz AS (SELECT * FROM erp_faktury WHERE data >= '2026-09-01' AND data < '2026-10-01'),
+warianty AS (
+    SELECT 1 AS lp, 'przed scaleniem' AS wariant, f.*, f.id_kontrahenta AS id_firmy FROM wrz f
+    UNION ALL SELECT 2, 'po scaleniu', f.*, m.id_nowy FROM wrz f JOIN mapa_kontrahentow m ON m.id_stary = f.id_kontrahenta
+    UNION ALL SELECT 3, 'po zatwierdzeniu 7 par', f.*, m.id_nowy FROM wrz f JOIN mapa_7 m ON m.id_stary = f.id_kontrahenta)
+SELECT wariant, count(*) AS dokumenty, count(*) FILTER (WHERE typ = 'faktura') AS faktury,
+       round(sum(kwota_netto), 2) AS netto, round(sum(kwota_netto + vat), 2) AS brutto,
+       count(DISTINCT id_firmy) AS kontrahenci,
+       count(*) FILTER (WHERE id_firmy >= 260000) AS dok_26xxxx,
+       round(sum(kwota_netto) FILTER (WHERE id_firmy >= 260000), 2) AS netto_26xxxx,
+       count(*) FILTER (WHERE k.id_biura_crm IS NULL) AS dok_bez_crm,
+       round(sum(kwota_netto) FILTER (WHERE k.id_biura_crm IS NULL), 2) AS netto_bez_crm
+FROM warianty w JOIN kontr k ON k.id_kontrahenta = w.id_firmy
+GROUP BY lp, wariant ORDER BY lp;
+
+-- Kontrahenci z dokumentem i mediana netto na kontrahenta, X.2025–IX.2026
+WITH f AS (SELECT * FROM erp_faktury WHERE data >= '2025-10-01' AND data < '2026-10-01'),
+przed AS (SELECT id_kontrahenta, sum(kwota_netto) AS netto FROM f GROUP BY 1),
+po AS (SELECT m.id_nowy, sum(f.kwota_netto) AS netto FROM f JOIN mapa_kontrahentow m ON m.id_stary = f.id_kontrahenta GROUP BY 1)
+SELECT (SELECT count(*) FROM przed) AS kontrahenci_przed, (SELECT count(*) FROM po) AS kontrahenci_po,
+       (SELECT round(median(netto), 2) FROM przed) AS mediana_przed, (SELECT round(median(netto), 2) FROM po) AS mediana_po;
+
+-- Kontrola: firm po scaleniu (z 7 parami) tyle, ile biur i NIP-ów w CRM
+SELECT (SELECT count(DISTINCT id_nowy) FROM mapa_kontrahentow) AS po_scaleniu,
+       (SELECT count(DISTINCT id_nowy) FROM mapa_7) AS po_zatwierdzeniu_7,
+       (SELECT count(*) FROM crm_biura) AS biura_crm,
+       (SELECT count(DISTINCT regexp_replace(nip, '[^0-9]', '', 'g')) FROM crm_biura) AS nipy_crm;
+
+-- Wrzesień: o ile zmieniłaby się suma netto przy typowych błędach złączenia (każdy błąd osobno)
+WITH wrz AS (SELECT * FROM erp_faktury WHERE data >= '2026-09-01' AND data < '2026-10-01'),
+kontr AS (SELECT id_kontrahenta, regexp_replace(nip, '[^0-9]', '', 'g') AS nip_c FROM erp_kontrahenci
+          UNION ALL SELECT id_kontrahenta, regexp_replace(nip, '[^0-9]', '', 'g') FROM erp_kontrahenci_archiwum),
+glowne AS (SELECT k.* FROM kontr k JOIN mapa_kontrahentow m ON m.id_stary = k.id_kontrahenta WHERE m.id_stary = m.id_nowy),
+baza AS (SELECT sum(kwota_netto) AS s FROM wrz)
+SELECT 'JOIN mapa_kontrahentow (mapa ma wszystkie rekordy)' AS sposob, count(*) AS dokumenty,
+       round(sum(f.kwota_netto) - (SELECT s FROM baza), 2) AS zmiana
+FROM wrz f JOIN mapa_kontrahentow m ON m.id_stary = f.id_kontrahenta
+UNION ALL
+SELECT 'mapa tylko ze scalonymi rekordami, INNER JOIN', count(*), round(sum(f.kwota_netto) - (SELECT s FROM baza), 2)
+FROM wrz f JOIN (SELECT * FROM mapa_kontrahentow WHERE id_stary <> id_nowy) m ON m.id_stary = f.id_kontrahenta
+UNION ALL
+SELECT 'mapa tylko z erp_kontrahenci (bez archiwum), INNER JOIN', count(*), round(sum(f.kwota_netto) - (SELECT s FROM baza), 2)
+FROM wrz f JOIN (SELECT * FROM mapa_kontrahentow WHERE zrodlo = 'erp_kontrahenci') m ON m.id_stary = f.id_kontrahenta
+UNION ALL
+SELECT 'łączenie po NIP-ie ze wszystkimi rekordami (bez scalenia)', count(*), round(sum(f.kwota_netto) - (SELECT s FROM baza), 2)
+FROM wrz f JOIN kontr a USING (id_kontrahenta) JOIN kontr b USING (nip_c)
+UNION ALL
+SELECT 'łączenie po NIP-ie z rekordami głównymi (po scaleniu)', count(*), round(sum(f.kwota_netto) - (SELECT s FROM baza), 2)
+FROM wrz f JOIN mapa_kontrahentow m ON m.id_stary = f.id_kontrahenta
+JOIN kontr a ON a.id_kontrahenta = m.id_nowy JOIN glowne b USING (nip_c);
+```
