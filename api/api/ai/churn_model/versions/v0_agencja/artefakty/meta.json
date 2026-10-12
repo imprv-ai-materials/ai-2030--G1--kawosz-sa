@@ -1,0 +1,31 @@
+{
+  "wersja": "v0_agencja",
+  "cechy": [
+    "status_crm",
+    "plan",
+    "liczba_pracownikow",
+    "branza",
+    "miasto",
+    "miasto_te",
+    "am_id",
+    "staz_mies",
+    "dni_do_konca_umowy",
+    "cena_mies",
+    "zaparzenia_30d",
+    "trend_zaparzen",
+    "bledy_60d",
+    "awarie_60d",
+    "zgloszenia_odbior_ekspresu",
+    "rabat_retencyjny_max",
+    "kontakty_am_90d",
+    "sr_opoznienie_platnosci",
+    "dni_od_ostatniego_zamowienia",
+    "nps_ostatni"
+  ],
+  "kategoryczne": [
+    "status_crm",
+    "plan",
+    "branza",
+    "miasto"
+  ]
+}

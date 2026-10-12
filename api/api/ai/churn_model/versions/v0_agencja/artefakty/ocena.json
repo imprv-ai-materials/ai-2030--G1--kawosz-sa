@@ -1,0 +1,31 @@
+{
+  "wersja": "v0_agencja",
+  "sposob_oceny": "losowy podział wierszy 80/20, stratyfikowany, random_state=42",
+  "wiersze": 12346,
+  "wiersze_uczace": 9876,
+  "wiersze_testowe": 2470,
+  "odsetek_jedynek": 0.0353,
+  "auc": 0.9999,
+  "waznosc_gain": {
+    "dni_do_konca_umowy": 0.955,
+    "zaparzenia_30d": 0.0067,
+    "dni_od_ostatniego_zamowienia": 0.006,
+    "bledy_60d": 0.0051,
+    "staz_mies": 0.0044,
+    "sr_opoznienie_platnosci": 0.004,
+    "cena_mies": 0.0038,
+    "trend_zaparzen": 0.0035,
+    "liczba_pracownikow": 0.0035,
+    "am_id": 0.0032,
+    "branza": 0.0012,
+    "nps_ostatni": 0.001,
+    "kontakty_am_90d": 0.001,
+    "rabat_retencyjny_max": 0.0007,
+    "miasto_te": 0.0004,
+    "awarie_60d": 0.0003,
+    "zgloszenia_odbior_ekspresu": 0.0,
+    "status_crm": 0.0,
+    "plan": 0.0,
+    "miasto": 0.0
+  }
+}

@@ -1,7 +1,7 @@
 # Zmienna celu: odejdzie_90d
 
 Cel modelu: wskazać biura, które odejdą w ciągu 90 dni. Tabela `snapshoty` w `kawosz.duckdb` (SQL:
-[`ai/features/snapshoty.sql`](../ai/features/snapshoty.sql)) ma jeden wiersz na biuro z aktywną umową × 1. dzień
+[`api/api/ai/features/snapshoty.sql`](../api/api/ai/features/snapshoty.sql)) ma jeden wiersz na biuro z aktywną umową × 1. dzień
 miesiąca, od 2024-01-01 do 2026-06-01. Ma 30 snapszotów, **41 190 wierszy**, 1 873 biura i **1 441 jedynek
 (3,50%)**. Kolumny: `data_snapszotu`, `id_biura`, `odejdzie_90d`.
 
