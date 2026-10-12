@@ -89,15 +89,18 @@ class Ustawienia:
     baza: Path = DB_PATH
     dostawy: Path = PROJECT_ROOT / "_dostawy"
     raporty: Path = PROJECT_ROOT / "docs" / "kwarantanna"
+    wykresy_psi: Path = PROJECT_ROOT / "docs" / "img" / "psi"
 
     @classmethod
     def z_env(cls) -> "Ustawienia":
-        """KAWOSZ_BAZA, KAWOSZ_DOSTAWY, KAWOSZ_RAPORTY nadpisują ścieżki (np. kopia bazy do próby)."""
+        """KAWOSZ_BAZA, KAWOSZ_DOSTAWY, KAWOSZ_RAPORTY, KAWOSZ_WYKRESY_PSI nadpisują ścieżki (np. kopia bazy do
+        próby)."""
         domyslne = cls()
         return cls(
             baza=Path(os.environ.get("KAWOSZ_BAZA", domyslne.baza)),
             dostawy=Path(os.environ.get("KAWOSZ_DOSTAWY", domyslne.dostawy)),
             raporty=Path(os.environ.get("KAWOSZ_RAPORTY", domyslne.raporty)),
+            wykresy_psi=Path(os.environ.get("KAWOSZ_WYKRESY_PSI", domyslne.wykresy_psi)),
         )
 
 
