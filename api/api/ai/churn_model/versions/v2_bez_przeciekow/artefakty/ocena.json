@@ -1,0 +1,36 @@
+{
+  "wersja": "v2_bez_przeciekow",
+  "sposob_oceny": "losowy podział wierszy 80/20, stratyfikowany, random_state=42",
+  "wiersze": 12346,
+  "wiersze_uczace": 9876,
+  "wiersze_testowe": 2470,
+  "odsetek_jedynek": 0.0353,
+  "auc": 0.8123,
+  "auc_podzial_czasowy": 0.7989,
+  "podzial_czasowy": {
+    "uczace_snapszoty": "2024-04 – 2025-07",
+    "testowe_snapszoty": "2025-10 – 2026-04",
+    "wiersze_uczace": 8167,
+    "wiersze_testowe": 4179,
+    "jedynki_testowe": 148
+  },
+  "waznosc_gain": {
+    "dni_do_rocznicy": 0.1996,
+    "trend_zaparzen": 0.1823,
+    "zaparzenia_30d": 0.1112,
+    "cena_mies": 0.0716,
+    "sr_opoznienie_platnosci": 0.0677,
+    "staz_mies": 0.0576,
+    "branza": 0.0572,
+    "liczba_pracownikow": 0.0549,
+    "dni_od_ostatniego_zamowienia": 0.0487,
+    "miasto_te": 0.0397,
+    "bledy_60d": 0.0395,
+    "nps_ostatni": 0.0296,
+    "am_id": 0.0148,
+    "miasto": 0.0111,
+    "awarie_60d": 0.0071,
+    "kontakty_am_90d": 0.0071,
+    "plan": 0.0004
+  }
+}

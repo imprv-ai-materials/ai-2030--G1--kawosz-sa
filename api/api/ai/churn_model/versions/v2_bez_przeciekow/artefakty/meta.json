@@ -1,0 +1,61 @@
+{
+  "wersja": "v2_bez_przeciekow",
+  "cechy": [
+    "plan",
+    "liczba_pracownikow",
+    "branza",
+    "miasto",
+    "am_id",
+    "staz_mies",
+    "dni_do_rocznicy",
+    "cena_mies",
+    "zaparzenia_30d",
+    "trend_zaparzen",
+    "bledy_60d",
+    "awarie_60d",
+    "kontakty_am_90d",
+    "sr_opoznienie_platnosci",
+    "dni_od_ostatniego_zamowienia",
+    "nps_ostatni"
+  ],
+  "kategoryczne": [
+    "plan",
+    "branza",
+    "miasto"
+  ],
+  "kodowanie_miasta": {
+    "srednie": {
+      "Białystok": 0.03278688524590164,
+      "Bydgoszcz": 0.034334763948497854,
+      "Częstochowa": 0.06451612903225806,
+      "Gdańsk": 0.029411764705882353,
+      "Gdynia": 0.0273972602739726,
+      "Gliwice": 0.10526315789473684,
+      "Gniezno": 0.06557377049180328,
+      "Gorzów Wielkopolski": 0.08333333333333333,
+      "Kalisz": 0.0425531914893617,
+      "Katowice": 0.046511627906976744,
+      "Kielce": 0.022727272727272728,
+      "Konin": 0.07692307692307693,
+      "Kraków": 0.02867383512544803,
+      "Leszno": 0.041666666666666664,
+      "Lublin": 0.05161290322580645,
+      "Luboń": 0.0,
+      "Olsztyn": 0.0425531914893617,
+      "Opole": 0.0,
+      "Piła": 0.0625,
+      "Poznań": 0.035864978902953586,
+      "Radom": 0.05263157894736842,
+      "Rzeszów": 0.03361344537815126,
+      "Sopot": 0.0,
+      "Swarzędz": 0.022222222222222223,
+      "Szczecin": 0.021505376344086023,
+      "Toruń": 0.015873015873015872,
+      "Warszawa": 0.03853211009174312,
+      "Wrocław": 0.02791145332050048,
+      "Zielona Góra": 0.03260869565217391,
+      "Łódź": 0.04523809523809524
+    },
+    "srednia_ogolna": 0.035338193600648035
+  }
+}
