@@ -1,0 +1,122 @@
+{
+  "sposob_oceny": "podział w czasie: uczenie na snapszotach do 2025-10 (okno etykiety kończy się przed testem), test na snapszotach od 2026-01",
+  "uczenie": {
+    "v0_agencja (wiersze agencji, kwartalne)": {
+      "od": "2024-04",
+      "do": "2025-10",
+      "snapszoty": 7,
+      "wiersze": 9553,
+      "jedynki": 338
+    },
+    "v2_bez_przeciekow (snapshoty, miesięczne)": {
+      "od": "2024-01",
+      "do": "2025-10",
+      "snapszoty": 22,
+      "wiersze": 29994,
+      "jedynki": 1042
+    }
+  },
+  "test_wspolny": {
+    "od": "2026-01",
+    "do": "2026-04",
+    "snapszoty": 2,
+    "wiersze": 2793,
+    "jedynki": 98,
+    "wyniki": [
+      {
+        "model": "v0_agencja",
+        "auc": 0.9995,
+        "auc_95": [
+          0.9991,
+          0.9998
+        ],
+        "wiersze": 2793,
+        "jedynki": 98,
+        "oznaczone": 84,
+        "trafione": 81,
+        "precyzja": 0.9643,
+        "czulosc": 0.8265
+      },
+      {
+        "model": "v2_bez_przeciekow",
+        "auc": 0.8273,
+        "auc_95": [
+          0.7745,
+          0.8784
+        ],
+        "wiersze": 2793,
+        "jedynki": 98,
+        "oznaczone": 84,
+        "trafione": 36,
+        "precyzja": 0.4286,
+        "czulosc": 0.3673
+      },
+      {
+        "model": "regula_opiekunow",
+        "auc": 0.6853,
+        "auc_95": [
+          0.6413,
+          0.7338
+        ],
+        "wiersze": 2793,
+        "jedynki": 98,
+        "oznaczone": 84,
+        "trafione": 38,
+        "precyzja": 0.4524,
+        "czulosc": 0.3878
+      },
+      {
+        "model": "v2_bez_przeciekow (uczony tylko na wierszach agencji)",
+        "auc": 0.8651,
+        "auc_95": [
+          0.8246,
+          0.9031
+        ],
+        "wiersze": 2793,
+        "jedynki": 98,
+        "oznaczone": 84,
+        "trafione": 40,
+        "precyzja": 0.4762,
+        "czulosc": 0.4082
+      }
+    ]
+  },
+  "test_miesieczny": {
+    "od": "2026-01",
+    "do": "2026-06",
+    "snapszoty": 6,
+    "wiersze": 8404,
+    "jedynki": 295,
+    "wyniki": [
+      {
+        "model": "v2_bez_przeciekow",
+        "auc": 0.7867,
+        "auc_95": [
+          0.7413,
+          0.8302
+        ],
+        "wiersze": 8404,
+        "jedynki": 295,
+        "oznaczone": 282,
+        "trafione": 94,
+        "precyzja": 0.3333,
+        "czulosc": 0.3186
+      },
+      {
+        "model": "regula_opiekunow",
+        "auc": 0.6706,
+        "auc_95": [
+          0.628,
+          0.7097
+        ],
+        "wiersze": 8404,
+        "jedynki": 295,
+        "oznaczone": 282,
+        "trafione": 107,
+        "precyzja": 0.3794,
+        "czulosc": 0.3627
+      }
+    ]
+  },
+  "bootstrap": "1000 losowań biur ze zwracaniem, ziarno 42"
+}
