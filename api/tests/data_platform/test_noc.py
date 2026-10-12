@@ -48,6 +48,28 @@ MAPA_KONTRAHENTOW = """
     UNION ALL SELECT id_kontrahenta, id_kontrahenta FROM erp_kontrahenci_archiwum;
 """
 
+# Źródła cech churnu spoza nocnych dostaw (CRM, IoT, helpdesk). Biuro 10001 ma aktywną umowę, 10002 wypowiedziało ją
+# przed nocą, więc nie ma go w populacji cech.
+ZRODLA_CECH = """
+    CREATE TABLE crm_biura (
+        id_biura BIGINT, miasto VARCHAR, branza VARCHAR, liczba_pracownikow BIGINT, am_id BIGINT, plan VARCHAR,
+        cena_mies DOUBLE, data_startu DATE, data_konca_umowy DATE, status VARCHAR);
+    INSERT INTO crm_biura VALUES
+        (10001, 'Poznań', 'IT', 50, 3, 'S', 999, DATE '2024-03-01', DATE '2027-02-28', 'aktywny'),
+        (10002, 'Poznań', 'Bank', 20, 3, 'M', 1500, DATE '2023-11-01', DATE '2026-10-31', 'zakończony');
+    CREATE TABLE crm_umowy_historia (id_biura BIGINT, data_zdarzenia DATE, typ VARCHAR, plan VARCHAR, cena DOUBLE);
+    INSERT INTO crm_umowy_historia VALUES
+        (10001, DATE '2024-03-01', 'start', 'S', 999),
+        (10002, DATE '2023-11-01', 'start', 'M', 1500),
+        (10002, DATE '2026-09-15', 'wypowiedzenie', 'M', 1500);
+    CREATE TABLE iot_ekspresy (id_ekspresu VARCHAR, id_biura BIGINT);
+    CREATE TABLE iot_telemetria (
+        id_ekspresu VARCHAR, data DATE, zaparzenia BIGINT, bledy BIGINT, data_dostarczenia DATE);
+    CREATE TABLE helpdesk_zgloszenia (id VARCHAR, id_biura BIGINT, utworzono TIMESTAMP, kategoria VARCHAR);
+    CREATE TABLE crm_kontakty_am (id_biura BIGINT, data DATE, rabat_retencyjny_pct BIGINT);
+    CREATE TABLE ankiety_nps (id_biura BIGINT, data_wysylki DATE, data_odpowiedzi DATE, wynik BIGINT);
+"""
+
 
 def _zapisz_plik_z_kasy(con: duckdb.DuckDBPyConnection, sciezka) -> None:
     dostawa, kolumny = KONTRAKT_POS.dostawa, KONTRAKT_POS.wymagane
@@ -71,7 +93,7 @@ def ust(tmp_path) -> noc.Ustawienia:
         baza=tmp_path / "kawosz.duckdb", dostawy=tmp_path / "dostawy", raporty=tmp_path / "kwarantanna"
     )
     con = duckdb.connect(str(ust.baza))
-    con.execute(CZYSTE_DANE + MAPA_KONTRAHENTOW)
+    con.execute(CZYSTE_DANE + MAPA_KONTRAHENTOW + ZRODLA_CECH)
     for zrodlo, pliki in DOSTAWA_PARQUET.items():
         (ust.dostawy / str(DZIEN) / zrodlo).mkdir(parents=True)
         for plik, sql in pliki.items():
@@ -86,7 +108,7 @@ def ust(tmp_path) -> noc.Ustawienia:
 def odcisk(ust: noc.Ustawienia) -> dict:
     """Liczba wierszy i suma skrótów wierszy każdej tabeli, którą zmienia noc: równe odciski = te same dane."""
     tabele = [t.nazwa for ts in noc.TABELE.values() for t in ts]
-    tabele += ["kwarantanna", "wsady", "naruszenia", "most_przychodu"]
+    tabele += ["kwarantanna", "wsady", "naruszenia", "most_przychodu", "cechy_aktualne"]
     con = duckdb.connect(str(ust.baza), read_only=True)
     try:
         wynik = {}
@@ -204,6 +226,14 @@ def test_ponowienie_kroku_po_awarii_po_zapisie_daje_te_same_liczby(ust):
     inngest_app.przebieg(DZIEN, ust)  # drugi, zwykły przebieg tej samej nocy
     assert "publikuj-ecom" not in wykonane_przed_awaria and "wczytaj-ecom" in wykonane_przed_awaria
     assert odcisk(ust) == po_ponowieniu
+
+
+def test_noc_odswieza_cechy_aktualne_na_poczatek_dnia_po_dniu_nocy(ust):
+    """Noc dla D działa o 3:00 w D + 1, więc cechy to stan na początek D + 1, jak t0 w treningu."""
+    wynik = inngest_app.przebieg(DZIEN, ust)
+
+    assert wynik["cechy"] == {"t0": "2026-10-01", "wiersze": 1}
+    assert policz(ust, "SELECT id_biura, t0, plan FROM cechy_aktualne") == [(10001, date(2026, 10, 1), "S")]
 
 
 def test_dzien_nocy_z_crona_to_wczoraj_w_czasie_polskim_a_z_recznego_zdarzenia_dzien_ze_zdarzenia():

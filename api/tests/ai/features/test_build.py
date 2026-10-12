@@ -1,4 +1,5 @@
-"""Cechy z sql/<rodzina>.sql na dzień t0 i tabela cechy_treningowe: populacja, opóźnienia dostaw, etykieta."""
+"""Cechy z sql/<rodzina>.sql na dzień t0 i tabele cechy_treningowe i cechy_aktualne: populacja, opóźnienia dostaw,
+etykieta."""
 
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
@@ -9,7 +10,7 @@ import pytest
 import yaml
 
 from api.ai.features import build
-from api.ai.features.build import KLUCZ, RODZINY, policz_cechy, zbuduj_cechy_treningowe
+from api.ai.features.build import KLUCZ, RODZINY, policz_cechy, zbuduj_cechy_aktualne, zbuduj_cechy_treningowe
 
 FEATURES = Path(build.__file__).parent
 T0 = date(2025, 4, 1)
@@ -211,6 +212,35 @@ def test_t0_spoza_snapshoty_przerywa_i_nie_nadpisuje_tabeli(con):
         zbuduj_cechy_treningowe([date(2025, 4, 15)], con)
 
     assert con.sql("SELECT count(*) FROM cechy_treningowe").fetchone() == (2,)
+
+
+def test_cechy_aktualne_to_cechy_treningowe_z_tego_samego_t0_bez_etykiety(con):
+    zbuduj_cechy_treningowe([T0, T1], con)
+
+    wiersze = zbuduj_cechy_aktualne(T0, con)
+
+    aktualne = _df(con.sql("SELECT * FROM cechy_aktualne"))
+    treningowe = _df(con.sql("SELECT * EXCLUDE (odejdzie_90d) FROM cechy_treningowe WHERE t0 = ?", params=[T0]))
+    assert wiersze == len(aktualne) == 2  # biura 1 i 5
+    pd.testing.assert_frame_equal(aktualne, treningowe)
+
+
+def test_cechy_aktualne_zastepuja_poprzedni_stan_i_nie_potrzebuja_snapszotu(con):
+    zbuduj_cechy_aktualne(T0, con)
+
+    dzis = date(2025, 5, 12)  # nie 1. dzień miesiąca, więc snapshoty nie ma etykiety na ten dzień
+    zbuduj_cechy_aktualne(dzis, con)
+
+    assert con.sql("SELECT id_biura, t0 FROM cechy_aktualne").fetchall() == [(1, dzis)]
+
+
+def test_brak_biur_w_t0_przerywa_i_nie_nadpisuje_cech_aktualnych(con):
+    zbuduj_cechy_aktualne(T0, con)
+
+    with pytest.raises(ValueError, match="żadnego biura"):
+        zbuduj_cechy_aktualne(date(2019, 1, 1), con)
+
+    assert con.sql("SELECT count(*) FROM cechy_aktualne").fetchone() == (2,)
 
 
 def test_katalog_opisuje_kazda_ceche_kazdej_rodziny(con):

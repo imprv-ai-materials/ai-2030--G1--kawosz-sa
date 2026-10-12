@@ -1,12 +1,16 @@
-"""Tabela cechy_treningowe w kawosz.duckdb: cechy z sql/<rodzina>.sql na każdą datę t0 i etykieta ze snapshoty.
+"""Tabele cech modelu churnu w kawosz.duckdb, liczone z tych samych plików sql/<rodzina>.sql:
+
+- cechy_treningowe: cechy na każdą datę t0 i etykieta ze snapshoty (trening);
+- cechy_aktualne: cechy na jedno t0 bez etykiety, czyli aktualny stan biur, który ocenia model. Odświeża ją co noc
+  inngest_app.py (krok cechy-aktualne) na t0 = dzień po dniu nocy.
 
 Każdy plik sql/<rodzina>.sql przyjmuje parametr $t0 i zwraca 1 wiersz na biuro z populacji w t0 (umowa trwa, brak
 wypowiedzenia przed t0): id_biura, t0 i cechy rodziny, liczone tylko z rekordów, które do t0 dotarły (opóźnienia
 źródeł: docs/opoznienia_danych.md). Opisy cech: katalog.yaml.
-Na produkcji te same pliki liczą cechy na dzisiejsze t0 (policz_cechy), tylko bez etykiety.
 
     PYTHONPATH=api poetry run python -m api.ai.features.build                         # wszystkie daty snapshoty
     PYTHONPATH=api poetry run python -m api.ai.features.build 2026-05-01 2026-06-01
+    PYTHONPATH=api poetry run python -m api.ai.features.build aktualne [2026-10-01]   # cechy_aktualne, domyślnie DZIS
 """
 
 import sys
@@ -21,6 +25,10 @@ KATALOG_SQL = Path(__file__).parent / "sql"
 RODZINY = ["umowa", "uzycie", "zamowienia", "platnosci", "serwis", "relacja", "firmografia"]
 KLUCZ = ["id_biura", "t0"]
 TABELA = "cechy_treningowe"
+TABELA_AKTUALNA = "cechy_aktualne"
+# „Dziś” w projekcie: dzień po eksporcie z 30.09.2026. Telemetria, CRM i helpdesk kończą się na eksporcie (nie ma ich
+# w nocnych dostawach), więc cechy na późniejsze t0 miałyby okna częściowo bez danych.
+DZIS = date(2026, 10, 1)
 
 
 def _policz_rodzine(con: duckdb.DuckDBPyConnection, rodzina: str, daty_t0: list[date]) -> str:
@@ -116,11 +124,37 @@ def zbuduj_cechy_treningowe(daty_t0: list[date], con: duckdb.DuckDBPyConnection 
             con.close()
 
 
+def zbuduj_cechy_aktualne(t0: date, con: duckdb.DuckDBPyConnection | None = None) -> int:
+    """Liczy cechy na jedno t0 i zapisuje tabelę cechy_aktualne w miejsce poprzedniego stanu.
+
+    Te same pliki sql/ i te same kontrole rodzin co w cechy_treningowe, tylko bez etykiety, więc model ocenia biura
+    na cechach liczonych tak jak w treningu. Pusta populacja (np. pusta crm_biura) przerywa, zanim nadpisze tabelę.
+    Bez `con` zapisuje do kawosz.duckdb. Zwraca liczbę wierszy.
+    """
+    wlasne = con is None
+    con = connect(read_only=False) if wlasne else con
+    try:
+        con.execute(f"CREATE OR REPLACE TEMP TABLE _cechy AS\n{_zapytanie_cech(con, [t0])}")
+        (wiersze,) = con.sql("SELECT count(*) FROM _cechy").fetchone()
+        if not wiersze:
+            raise ValueError(f"w t0 = {t0} nie ma żadnego biura z aktywną umową, {TABELA_AKTUALNA} bez zmian")
+        con.execute(f"CREATE OR REPLACE TABLE {TABELA_AKTUALNA} AS SELECT * FROM _cechy ORDER BY id_biura")
+        con.execute("DROP TABLE _cechy")
+        return wiersze
+    finally:
+        if wlasne:
+            con.close()
+
+
 def daty_snapszotow(con: duckdb.DuckDBPyConnection) -> list[date]:
     return [d for (d,) in con.sql("SELECT DISTINCT data_snapszotu FROM snapshoty ORDER BY 1").fetchall()]
 
 
 def main(argv: list[str]) -> None:
+    if argv[:1] == ["aktualne"]:
+        t0 = date.fromisoformat(argv[1]) if len(argv) > 1 else DZIS
+        print(f"{TABELA_AKTUALNA}: {zbuduj_cechy_aktualne(t0)} biur, t0 = {t0}")
+        return
     if argv:
         daty = [date.fromisoformat(a) for a in argv]
     else:

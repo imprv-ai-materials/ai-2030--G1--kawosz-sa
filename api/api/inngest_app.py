@@ -1,5 +1,6 @@
 """Nocne zadanie Inngest: o 3:00 czasu polskiego wczytuje dostawę z poprzedniego dnia, sprawdza reguły jakości,
-publikuje dobre wsady, odkłada złe do kwarantanny i przelicza most przychodu za miesiąc tego dnia.
+publikuje dobre wsady, odkłada złe do kwarantanny, przelicza most przychodu za miesiąc tego dnia i odświeża aktualne
+cechy modelu churnu.
 
 Każdy krok to osobny `step.run`, więc po awarii Inngest ponawia tylko krok, który padł; wyniki wcześniejszych
 kroków ma zapamiętane. Kroki (api/api/data_platform/noc.py) są idempotentne, więc ponowienie kroku, który
@@ -10,6 +11,7 @@ zdążył zapisać dane, i drugi przebieg tej samej nocy dają te same liczby.
     wycen-pos, wycen-erp, wycen-ecom                ile przychodu netto niesie wsad i ile zawyżyłyby go duplikaty
     publikuj-{źródło} albo kwarantanna-{źródło}     zależnie od tego, czy złamano regułę blokującą
     most                                            most przychodu za miesiąc dnia D → most_przychodu
+    cechy-aktualne                                  cechy churnu na początek dnia D + 1 → cechy_aktualne
     sprzatanie                                      usuwa schemat roboczy
 
 Ręczne uruchomienie dla wybranego dnia (np. po poprawionej dostawie): zdarzenie `kawosz/noc.uruchom`
@@ -29,6 +31,7 @@ from zoneinfo import ZoneInfo
 import inngest
 
 from api.adapters.duckdb_conn import connect
+from api.ai.features import build as cechy_churnu
 from api.contexts_boundaries.revenue_bc.most import most as most_przychodu
 from api.contexts_boundaries.revenue_bc.przychod import definicja
 from api.data_platform import noc
@@ -89,6 +92,21 @@ def przelicz_most(ust: noc.Ustawienia, dzien: date) -> dict:
     }
 
 
+def odswiez_cechy(ust: noc.Ustawienia, dzien: date) -> dict:
+    """Cechy churnu z ai/features/sql/ (te same pliki co w treningu) → cechy_aktualne w miejsce poprzedniego stanu.
+
+    t0 = D + 1: noc dla D działa o 3:00 w D + 1, a cechy to stan na początek dnia t0, tak jak w cechy_treningowe.
+    Wsad z dnia D jest już opublikowany, ale cechy go nie widzą: w t0 znane są dane ERP, CRM i helpdesku do t0 − 2
+    (opóźnienie D+1), czyli tak jak w treningu."""
+    t0 = dzien + timedelta(days=1)
+    con = connect(read_only=False, db_path=ust.baza)
+    try:
+        wiersze = cechy_churnu.zbuduj_cechy_aktualne(t0, con)
+    finally:
+        con.close()
+    return {"t0": str(t0), "wiersze": wiersze}
+
+
 Krok = Callable[..., object]
 
 
@@ -112,13 +130,14 @@ def przebieg(dzien: date, ust: noc.Ustawienia, krok: Krok = _od_razu) -> dict:
             k: v for k, v in wynik.items() if k != "reguly"
         }
     most = krok("most", przelicz_most, ust, dzien)
+    cechy = krok("cechy-aktualne", odswiez_cechy, ust, dzien)
     krok("sprzatanie", noc.sprzataj, ust, dzien)
-    return {"dzien": str(dzien), "wczytane": wczytane, "wsady": wsady, "most": most}
+    return {"dzien": str(dzien), "wczytane": wczytane, "wsady": wsady, "most": most, "cechy": cechy}
 
 
 @client.create_function(
     fn_id="kawosz-noc",
-    name="Kawosz: nocne ładowanie, reguły jakości i most przychodu",
+    name="Kawosz: nocne ładowanie, reguły jakości, most przychodu i cechy churnu",
     trigger=[inngest.TriggerCron(cron=CRON), inngest.TriggerEvent(event=ZDARZENIE)],
     # DuckDB ma jednego piszącego: dwie noce naraz (cron i ręczne uruchomienie) czekają na siebie.
     concurrency=[inngest.Concurrency(limit=1)],
