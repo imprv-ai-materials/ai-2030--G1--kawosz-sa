@@ -1,0 +1,41 @@
+{
+  "wersja": "v3_katalog",
+  "cechy": [
+    "plan",
+    "cena_mies",
+    "staz_mies",
+    "dni_do_rocznicy",
+    "zaparzenia_30d",
+    "trend_zaparzen",
+    "bledy_60d",
+    "dni_od_ostatniego_zamowienia",
+    "sr_opoznienie_platnosci",
+    "awarie_60d",
+    "am_id",
+    "kontakty_am_90d",
+    "nps_ostatni",
+    "liczba_pracownikow",
+    "branza",
+    "miasto"
+  ],
+  "kategoryczne": [
+    "plan",
+    "branza",
+    "miasto",
+    "am_id"
+  ],
+  "kroki": [
+    "kodowanie",
+    "skalowanie",
+    "lgbm"
+  ],
+  "lgbm": {
+    "class_weight": "balanced",
+    "random_state": 42,
+    "verbose": -1
+  },
+  "wersje": {
+    "scikit-learn": "1.9.1",
+    "lightgbm": "4.7.0"
+  }
+}

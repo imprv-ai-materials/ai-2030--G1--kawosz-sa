@@ -1,0 +1,60 @@
+{
+  "wersja": "v3_katalog",
+  "sposob_oceny": "podział w czasie jak w v2: uczenie na t0 2024-04 – 2025-07 (okno etykiety kończy się przed 2025-10-01), test na t0 2025-10 – 2026-04; wszystkie miesięczne wiersze cechy_treningowe",
+  "auc": 0.7834,
+  "auc_95": [
+    0.7344,
+    0.8289
+  ],
+  "uczenie": {
+    "snapszoty": "2024-04 – 2025-07",
+    "wiersze": 21827,
+    "jedynki": 779
+  },
+  "test": {
+    "snapszoty": "2025-10 – 2026-04",
+    "wiersze": 9769,
+    "jedynki": 346
+  },
+  "walidacja_krzyzowa": {
+    "foldy": [
+      "2024-10",
+      "2025-01",
+      "2025-04"
+    ],
+    "auc": [
+      0.8224,
+      0.8178,
+      0.7562
+    ],
+    "srednia": 0.7988
+  },
+  "v2_na_tych_samych_wierszach": 0.7905,
+  "porownanie_z_v2_na_jej_wierszach": {
+    "wiersze": "klucze agencji: uczenie 2024-04 – 2025-07, test 2025-10 – 2026-04 (kwartalne)",
+    "wiersze_uczace": 8167,
+    "wiersze_testowe": 4179,
+    "v2_cechy_snapszotu": 0.7989,
+    "v2_cechy_treningowe": 0.7966,
+    "v3_cechy_treningowe": 0.7906
+  },
+  "waznosc_gain": {
+    "trend_zaparzen": 0.2234,
+    "dni_do_rocznicy": 0.1679,
+    "zaparzenia_30d": 0.1094,
+    "branza": 0.096,
+    "cena_mies": 0.0837,
+    "liczba_pracownikow": 0.068,
+    "staz_mies": 0.0537,
+    "miasto": 0.0501,
+    "sr_opoznienie_platnosci": 0.0463,
+    "nps_ostatni": 0.0257,
+    "dni_od_ostatniego_zamowienia": 0.0209,
+    "bledy_60d": 0.0191,
+    "am_id": 0.0161,
+    "plan": 0.0106,
+    "kontakty_am_90d": 0.0084,
+    "awarie_60d": 0.0006
+  },
+  "bootstrap": "1000 losowań biur ze zwracaniem, ziarno 42"
+}
