@@ -1,8 +1,8 @@
 {
-  "name": "Smart Wrocław",
+  "name": "Kawosz S.A.",
   "dockerComposeFile": "compose.yaml",
   "service": "app",
-  "workspaceFolder": "/workspaces/smart_wroclaw",
+  "workspaceFolder": "/workspaces/kawosz_sa",
   // Bring the whole stack up with the container, not just `app`.
   "runServices": ["app", "db", "inngest"],
   "remoteUser": "vscode",
@@ -13,8 +13,8 @@
   // lists them in the Ports panel — nothing is hard-bound, so no OS/port clashes.
   "forwardPorts": [3100, 8101, "db:5432"],
   "portsAttributes": {
-    "3100": { "label": "UI · Next.js", "onAutoForward": "notify" },
-    "8101": { "label": "API + Inngest worker · FastAPI" },
+    "3100": { "label": "Panel jakości danych · Next.js", "onAutoForward": "notify" },
+    "8101": { "label": "API + nocne zadanie Inngest · FastAPI" },
     // The `inngest` service publishes its dashboard + event API on host 8488
     // (see .devcontainer/compose.yaml — 8488, not 8288, to avoid the imprv
     // clash). VS Code detects the published port; auto-open it in the browser.
@@ -44,7 +44,7 @@
         "anthropic.claude-code"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/workspaces/smart_wroclaw/.venv/bin/python"
+        "python.defaultInterpreterPath": "/workspaces/kawosz_sa/.venv/bin/python"
       }
     }
   }

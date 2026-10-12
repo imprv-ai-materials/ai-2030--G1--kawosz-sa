@@ -14,7 +14,7 @@
 # lets any uid write to it, so the writability probe below passes.
 set -euo pipefail
 
-WORKSPACE="${WORKSPACE:-/workspaces/smart_wroclaw}"
+WORKSPACE="${WORKSPACE:-/workspaces/kawosz_sa}"
 DEV_USER="${DEV_USER:-vscode}"
 
 log() { echo "[entrypoint] $*" >&2; }

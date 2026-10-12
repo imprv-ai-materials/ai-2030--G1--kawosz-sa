@@ -4,7 +4,7 @@
 # are safe. Idempotent — re-running it is fine.
 set -euo pipefail
 
-cd "$(dirname "$0")/.."   # → smart_wroclaw project root
+cd "$(dirname "$0")/.."   # → katalog główny repozytorium
 
 # The workspace is a bind mount. If the container user can't write to it, nothing
 # below can work (and the editor can't save files either). Normally entrypoint.sh
@@ -39,67 +39,48 @@ if [ ! -x .venv/bin/python ]; then
   python3 -m venv --clear .venv
 fi
 
-# api/.env is gitignored, so a fresh clone won't have one. Seed dev defaults with
-# NO OpenAI key (the agents fall back to offline heuristics). db host/port here
-# match the compose network; they're also overridden by the container env vars.
-if [ ! -f api/.env ]; then
-  echo "▸ api/.env missing — writing dev defaults (offline, no secrets)…"
-  cat > api/.env <<'ENV'
-# Local dev config for the devcontainer. Gitignored.
-CONFIG__POSTGRES__HOST=db
-CONFIG__POSTGRES__PORT=5432
-CONFIG__POSTGRES__DB=smart_wroclaw
-CONFIG__POSTGRES__USER=smart_wroclaw
-CONFIG__POSTGRES__PASSWORD=smart_wroclaw
-
-# Leave the OpenAI key blank → assistant + triage agents use offline fallbacks.
-CONFIG__OPENAI__API_KEY=
-CONFIG__OPENAI__DEFAULT_MODEL_NAME=gpt-5.4
-
-CONFIG__ASSISTANT__DEV_CITIZEN_ID=1
-CONFIG__REPORTS__DEFAULT_DEPARTMENT=Centrum Zarządzania Kryzysowego
-CONFIG__SPECIALIST__API_KEY=dev-specialist
-
-CONFIG__APP__JWT_SECRET=dev-insecure-change-me-please-min-32-bytes-secret
-CONFIG__APP__PASSWORD_PEPPER=dev-pepper
-CONFIG__APP__UI_BASE_URL=http://localhost:3100
-
-CONFIG__RESEND__API_KEY=
-CONFIG__ENABLE_QUERY_LOGGING=false
-ENV
-fi
-
-echo "▸ poetry install (backend deps + editable root → .venv)…"
-# NOT --no-root: installing the root package writes the editable path entry that
-# puts the inner api/ package on sys.path, so `uvicorn api.main:app` and alembic
-# can `import api`. (the root Dockerfile does the same with its second install.)
+echo "▸ poetry install (backend deps → .venv)…"
+# pyproject.toml ma package-mode = false: instalujemy same zależności; pakiet api jest na ścieżce dzięki
+# PYTHONPATH=api (pipeline'y pypyr) i `--app-dir api` (uvicorn).
 poetry install
+
+# pypyr i reszta narzędzi z .venv mają działać w każdym terminalu kontenera bez `poetry run` ani aktywacji.
+if ! grep -q "narzędzia projektu (pypyr)" ~/.bashrc; then
+  echo "export PATH=\"$(pwd)/.venv/bin:\$PATH\"  # narzędzia projektu (pypyr) z .venv" >> ~/.bashrc
+fi
 
 echo "▸ pnpm install (frontend deps → ui/node_modules)…"
 pnpm --dir ui install
 
-echo "▸ alembic upgrade head (apply the schema to the db service)…"
-poetry run alembic -c api/alembic.ini upgrade head
+# Baza kawosz.duckdb i symulacja nocnego potoku leżą w repozytorium na hoście (gitignore), więc w kontenerze są
+# od razu, jeśli powstały wcześniej. Na świeżym klonie budujemy je tutaj (data/ musi być pobrane z Git LFS).
+if [ ! -f kawosz.duckdb ] && [ -f data/erp/erp_faktury.parquet ] && head -c 7 data/erp/erp_faktury.parquet | grep -q PAR1; then
+  echo "▸ kawosz.duckdb missing — building it from data/ (pypyr dane)…"
+  poetry run pypyr dane
+fi
+if [ -f kawosz.duckdb ] && [ ! -f _symulacja/kawosz.duckdb ]; then
+  echo "▸ _symulacja missing — simulating 30 nights of the nightly job (pypyr symulacja)…"
+  poetry run pypyr symulacja
+fi
 
 cat <<'DONE'
 
-✅ Devcontainer ready. Start the stack from separate terminals:
+✅ Devcontainer gotowy. Uruchom w dwóch osobnych terminalach:
 
-    pypyr start_be      # REST + Inngest worker in ONE role=all process on :8101
-    pypyr start_ui      # Next.js UI
+    pypyr start_be      # API + nocne zadanie Inngest w JEDNYM procesie na :8101
+    pypyr start_ui      # panel jakości danych (Next.js) na :3100
 
-⚠️  In the devcontainer use `pypyr start_be` — NOT `start_api` / `start_worker`.
-    Those target the native host stack: they set INNGEST_DEV=127.0.0.1:8488 (dead
-    inside the container) and split into two processes the container's Inngest dev
-    server (pointed at app:8101) won't discover — chat turns then fail with
-    "Coś poszło nie tak" (inngest send: "never received response").
+⚠️  W devcontainerze nie uruchamiaj `pypyr start_tilt` (to ścieżka dla hosta: Tilt nie jest
+    zainstalowany w kontenerze, a w repozytorium nie ma Tiltfile). Serwer Inngest startuje sam
+    razem z kontenerem (usługa `inngest`). `start_api` działa tu tak samo jak `start_be`,
+    a `start_worker` nie jest potrzebny: Inngest woła funkcje pod app:8101.
 
-    Equivalent raw command if you prefer (inherits INNGEST_DEV=inngest:8288):
-    poetry run uvicorn api.main:app --host 0.0.0.0 --reload --port 8101
+Potem (VS Code → Ports):
+    Panel jakości     http://localhost:3100
+    API               http://localhost:8101/docs
+    Inngest           http://localhost:8488   (pokaże funkcję kawosz-noc z cronem 3:00)
 
-Then open the forwarded ports (VS Code → Ports panel):
-    UI            http://localhost:3100
-    API docs      http://localhost:8101/docs
-    Inngest       http://localhost:8288
+Jedna noc na żądanie (widać ją w Inngest krok po kroku):
+    pypyr noc dzien=2026-09-30
 
 DONE

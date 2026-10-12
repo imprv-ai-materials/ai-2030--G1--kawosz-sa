@@ -3,6 +3,15 @@ steps:
   - pypyr.steps.debug
   - pypyr.steps.configvars
 
+  # W devcontainerze compose ustawia INNGEST_DEV=http://inngest:8288 — zostawiamy je; na hoście bierzemy
+  # port serwera Inngest z pyproject.toml (inngest_dev_url).
+  - name: pypyr.steps.envget
+    in:
+      envGet:
+        - env: INNGEST_DEV
+          key: inngest_dev
+          default: '{inngest_dev_url}'
+
   - name: pypyr.steps.env
     description: Setting role + Inngest dev env
     in:
@@ -12,7 +21,11 @@ steps:
           # answers, report triage) actually execute. The dev server
           # (compose.yaml) is pointed at this process's /api/inngest.
           SMART_WROCLAW_ROLE: 'worker'
-          INNGEST_DEV: '{inngest_dev_url}'
+          INNGEST_DEV: '{inngest_dev}'
+          # Kawosz: baza, dostawy i raporty kwarantanny (zmienne kawosz_* w pyproject.toml).
+          KAWOSZ_BAZA: '{kawosz_baza}'
+          KAWOSZ_DOSTAWY: '{kawosz_dostawy}'
+          KAWOSZ_RAPORTY: '{kawosz_raporty}'
 
   - name: pypyr.steps.cmd
     description: Starting Inngest worker on :8103

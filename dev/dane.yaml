@@ -1,0 +1,27 @@
+# Buduje kawosz.duckdb od zera z data/ (Git LFS): surowe tabele, mapa kontrahentów i most przychodu
+# za sierpień i wrzesień 2026. Potrzebne na świeżym klonie, zanim uruchomisz `pypyr symulacja`.
+context_parser: pypyr.parser.keyvaluepairs
+steps:
+  - pypyr.steps.debug
+  - pypyr.steps.configvars
+
+  - name: pypyr.steps.env
+    in:
+      env:
+        set:
+          PYTHONPATH: 'api'
+
+  - name: pypyr.steps.cmd
+    description: data/ → kawosz.duckdb
+    in:
+      cmd: poetry run python -m api.data_platform.load_raw
+
+  - name: pypyr.steps.cmd
+    description: Mapa kontrahentów ERP (potrzebna definicji przychodu)
+    in:
+      cmd: poetry run python -m api.data_platform.mapa_kontrahentow
+
+  - name: pypyr.steps.cmd
+    description: Most przychodu za sierpień i wrzesień 2026
+    in:
+      cmd: poetry run python -m api.contexts_boundaries.revenue_bc.most.most 2026-09 2026-08

@@ -4,12 +4,16 @@ Każdy test psuje w niej jedną rzecz (SQL) i sprawdza, że właściwa reguła t
 same kolumny i typy co w kawosz.duckdb; pos_paragony bierze kolumny i typy wprost z kontraktu.
 """
 
+import os
 from datetime import date
 
 import duckdb
 import pytest
 
 from api.data_platform.kontrakty.kontrakt import wczytaj
+
+# Klient Inngest (api/inngest_app.py) powstaje przy imporcie: w testach w trybie deweloperskim, bez klucza podpisu.
+os.environ.setdefault("INNGEST_DEV", "1")
 
 DZIEN = date(2026, 9, 30)  # środa, ostatni dzień roboczy września: dzień eksportu w testach
 

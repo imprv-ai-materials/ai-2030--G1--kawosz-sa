@@ -1,0 +1,14 @@
+# Serwer Inngest (dev) na hoście, gdy pracujesz bez devcontainera: panel na http://localhost:8488, funkcje
+# woła z procesu `pypyr start_be` na :8101 hosta. W devcontainerze niepotrzebny (usługa `inngest` w compose).
+# Ctrl+C zatrzymuje i usuwa kontener.
+context_parser: pypyr.parser.keyvaluepairs
+steps:
+  - pypyr.steps.debug
+  - pypyr.steps.configvars
+
+  - name: pypyr.steps.cmd
+    description: Inngest dev server on :8488 → http://host.docker.internal:8101/api/inngest
+    in:
+      cmd: >-
+        docker run --rm --name kawosz-inngest -p 8488:8288 --add-host=host.docker.internal:host-gateway
+        inngest/inngest:latest inngest dev --no-discovery -u http://host.docker.internal:8101/api/inngest

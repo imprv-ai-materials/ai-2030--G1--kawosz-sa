@@ -6,6 +6,7 @@ tej nocy. Pliki z kas zapisujemy w formacie z kontraktu (cp1250, `;`, przecinek 
 
 import os
 from datetime import date, datetime
+from decimal import Decimal
 
 import duckdb
 import inngest
@@ -84,7 +85,8 @@ def ust(tmp_path) -> noc.Ustawienia:
 
 def odcisk(ust: noc.Ustawienia) -> dict:
     """Liczba wierszy i suma skrótów wierszy każdej tabeli, którą zmienia noc: równe odciski = te same dane."""
-    tabele = [t.nazwa for ts in noc.TABELE.values() for t in ts] + ["kwarantanna", "wsady", "most_przychodu"]
+    tabele = [t.nazwa for ts in noc.TABELE.values() for t in ts]
+    tabele += ["kwarantanna", "wsady", "naruszenia", "most_przychodu"]
     con = duckdb.connect(str(ust.baza), read_only=True)
     try:
         wynik = {}
@@ -140,6 +142,24 @@ def test_wsad_z_bledem_blokujacym_idzie_do_kwarantanny_z_raportem_a_reszta_jest_
     ]
     assert "POS-02" in (ust.raporty / f"pos_{DZIEN}.md").read_text()
     assert odcisk(ust) == po_pierwszym
+
+
+def test_wycena_wsadu_to_przychod_netto_a_kopia_pliku_to_zawyzenie(ust):
+    """Paragony z czystych danych: latte 14 zł z VAT 8% i kawa 169 zł z VAT 23% → 12,96 + 137,40 = 150,36 zł netto.
+    Kopia pliku z kasy zawyżyłaby przychód o tyle samo, bo powtarza oba paragony."""
+    kopia = ust.dostawy / str(DZIEN) / "pos" / f"pos_paragony_1_{DZIEN} (1).csv"
+    kopia.write_bytes((ust.dostawy / str(DZIEN) / "pos" / PLIK_Z_KASY).read_bytes())
+
+    wynik = inngest_app.przebieg(DZIEN, ust)
+
+    assert wynik["wsady"]["pos"]["wycena"] == {"przychod_netto": 150.36, "zawyzenie": 150.36, "uwaga": None}
+    assert wynik["wsady"]["erp"]["wycena"]["przychod_netto"] == 1500.0  # faktury netto 1000 + 500 zł
+    assert policz(ust, "SELECT wsad, przychod_netto, zawyzenie FROM wsady WHERE zrodlo = 'pos'") == [
+        (f"pos/{DZIEN}", Decimal("150.36"), Decimal("150.36"))
+    ]
+    # wynik każdej reguły źródła, także tych bez naruszeń (panel jakości liczy z nich trend)
+    naruszenia = dict(policz(ust, "SELECT regula, bledne FROM naruszenia WHERE zrodlo = 'pos'"))
+    assert len(naruszenia) == len(noc.REGULY["pos"]) and naruszenia["POS-02"] == 2 and naruszenia["POS-07"] == 0
 
 
 def test_poprawiona_dostawa_zdejmuje_wsad_z_kwarantanny(ust):

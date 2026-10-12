@@ -7,12 +7,14 @@ zdążył zapisać dane, i drugi przebieg tej samej nocy dają te same liczby.
 
     wczytaj-pos, wczytaj-erp, wczytaj-ecom          pliki z _dostawy/D/{źródło}/ → schemat roboczy wsad_D
     sprawdz-pos, sprawdz-erp, sprawdz-ecom          reguły jakości źródła za dzień D
+    wycen-pos, wycen-erp, wycen-ecom                ile przychodu netto niesie wsad i ile zawyżyłyby go duplikaty
     publikuj-{źródło} albo kwarantanna-{źródło}     zależnie od tego, czy złamano regułę blokującą
     most                                            most przychodu za miesiąc dnia D → most_przychodu
     sprzatanie                                      usuwa schemat roboczy
 
 Ręczne uruchomienie dla wybranego dnia (np. po poprawionej dostawie): zdarzenie `kawosz/noc.uruchom`
-z `{"dzien": "2026-09-30"}`. Bez serwera Inngest, te same kroki po kolei:
+z `{"dzien": "2026-09-30"}`, np. `pypyr noc dzien=2026-09-30` (wysyła je do serwera Inngest z INNGEST_DEV).
+Bez serwera Inngest, te same kroki po kolei w tym procesie:
 
     PYTHONPATH=api poetry run python -m api.inngest_app --dzien 2026-09-30
 """
@@ -28,6 +30,7 @@ import inngest
 
 from api.adapters.duckdb_conn import connect
 from api.contexts_boundaries.revenue_bc.most import most as most_przychodu
+from api.contexts_boundaries.revenue_bc.przychod import definicja
 from api.data_platform import noc
 
 STREFA = ZoneInfo("Europe/Warsaw")
@@ -43,6 +46,29 @@ def dzien_nocy(event: inngest.Event) -> date:
     if event.data and event.data.get("dzien"):
         return date.fromisoformat(str(event.data["dzien"]))
     return (datetime.fromtimestamp(event.ts / 1000, STREFA) - timedelta(days=1)).date()
+
+
+def wycen(ust: noc.Ustawienia, zrodlo: str, dzien: date) -> dict:
+    """Przychód netto według definicji, który niesie sam wsad (ujęty w miesiącu dnia D), i zawyżenie: o ile
+    więcej wyszłoby, gdyby zdublowane dokumenty (np. kopia pliku z kasy) policzyć dwa razy.
+
+    Dla wsadu w kwarantannie to przychód, którego nie ma w raportach, i zawyżenie, które nie trafiło do raportów.
+    Wsadu z błędem, przy którym definicja nie umie policzyć kwoty (np. paragon bez pozycji), nie wyceniamy: krok
+    zwraca powód zamiast kwoty, żeby noc szła dalej.
+    """
+    miesiac = dzien.replace(day=1)
+    con = connect(read_only=True, db_path=ust.baza)
+    try:
+        noc.widok_wsadu(con, zrodlo, dzien)
+        try:
+            netto = definicja.suma(con, miesiac, definicja.KROKI, bez_duplikatow=True)["kwota_pln"].sum()
+            z_duplikatami = definicja.suma(con, miesiac, definicja.KROKI, bez_duplikatow=False)["kwota_pln"].sum()
+        except ValueError as e:
+            return {"przychod_netto": None, "zawyzenie": None, "uwaga": str(e).splitlines()[0]}
+    finally:
+        con.close()
+    netto = round(float(netto), 2)
+    return {"przychod_netto": netto, "zawyzenie": round(float(z_duplikatami) - netto, 2), "uwaga": None}
 
 
 def przelicz_most(ust: noc.Ustawienia, dzien: date) -> dict:
@@ -75,14 +101,16 @@ def przebieg(dzien: date, ust: noc.Ustawienia, krok: Krok = _od_razu) -> dict:
     wywołanie, więc obie drogi wykonują ten sam kod w tej samej kolejności."""
     wczytane = {z: krok(f"wczytaj-{z}", noc.wczytaj, ust, z, dzien) for z in noc.ZRODLA}
     sprawdzone = {z: krok(f"sprawdz-{z}", noc.sprawdz, ust, z, dzien) for z in noc.ZRODLA}
+    wycenione = {z: krok(f"wycen-{z}", wycen, ust, z, dzien) for z in noc.ZRODLA}
     wsady = {}
     for z, wynik in sprawdzone.items():
         if wynik["blokujace"]:
-            wiersze = krok(f"kwarantanna-{z}", noc.odloz, ust, z, dzien, wynik["blokujace"])
-            wsady[z] = {"status": "kwarantanna", "wiersze": wiersze, **wynik}
+            status, wiersze = "kwarantanna", krok(f"kwarantanna-{z}", noc.odloz, ust, z, dzien, wynik, wycenione[z])
         else:
-            wiersze = krok(f"publikuj-{z}", noc.opublikuj, ust, z, dzien)
-            wsady[z] = {"status": "opublikowany", "wiersze": wiersze, **wynik}
+            status, wiersze = "opublikowany", krok(f"publikuj-{z}", noc.opublikuj, ust, z, dzien, wynik, wycenione[z])
+        wsady[z] = {"status": status, "wiersze": wiersze, "wycena": wycenione[z]} | {
+            k: v for k, v in wynik.items() if k != "reguly"
+        }
     most = krok("most", przelicz_most, ust, dzien)
     krok("sprzatanie", noc.sprzataj, ust, dzien)
     return {"dzien": str(dzien), "wczytane": wczytane, "wsady": wsady, "most": most}
@@ -106,7 +134,14 @@ FUNKCJE = [kawosz_noc]
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--dzien", type=date.fromisoformat, required=True, help="dzień dostawy RRRR-MM-DD")
+    parser.add_argument(
+        "--wyslij", action="store_true", help="wyślij zdarzenie do serwera Inngest zamiast liczyć noc w tym procesie"
+    )
     args = parser.parse_args()
+    if args.wyslij:
+        ids = client.send_sync(inngest.Event(name=ZDARZENIE, data={"dzien": str(args.dzien)}))
+        print(f"Wysłano {ZDARZENIE} dla {args.dzien} (zdarzenie {ids[0]}). Przebieg widać w panelu Inngest.")
+        return
     print(json.dumps(przebieg(args.dzien, noc.Ustawienia.z_env()), ensure_ascii=False, indent=2))
 
 

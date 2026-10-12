@@ -27,3 +27,5 @@ _staging/
 
 # Katalog dostaw nocnego potoku (api/api/data_platform/noc.py)
 _dostawy/
+# Symulacja nocnego potoku (api/api/data_platform/symulacja.py)
+_symulacja/

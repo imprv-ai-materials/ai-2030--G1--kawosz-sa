@@ -1,0 +1,18 @@
+# Symulacja nocnego potoku dla września 2026 (ok. 1 minuty): kopia kawosz.duckdb cofnięta do 31.08 w _symulacja/
+# i 30 nocy przez te same kroki co w Inngest. Z tej bazy czyta panel jakości (zmienna kawosz_baza w pyproject.toml).
+# kawosz.duckdb zostaje bez zmian. Wymaga kawosz.duckdb (pypyr dane).
+context_parser: pypyr.parser.keyvaluepairs
+steps:
+  - pypyr.steps.debug
+  - pypyr.steps.configvars
+
+  - name: pypyr.steps.env
+    in:
+      env:
+        set:
+          PYTHONPATH: 'api'
+
+  - name: pypyr.steps.cmd
+    description: 30 nocy nocnego potoku (1–30.09.2026) w _symulacja/
+    in:
+      cmd: poetry run python -m api.data_platform.symulacja --od 2026-09-01 --do 2026-09-30

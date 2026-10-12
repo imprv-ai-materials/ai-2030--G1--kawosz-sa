@@ -60,6 +60,12 @@ linter_exclude = ".venv,migrations"
 inngest_dev_url = "http://127.0.0.1:8488"
 # Default demo dataset for `pypyr seed_events` (override with dataset=<path>).
 seed_dataset = "api/tests/manual/fake_events.json"
+# Kawosz: baza, dostawy i raporty kwarantanny dla procesów API / nocnego zadania uruchamianych przez pypyr.
+# Domyślnie symulacja września (pypyr symulacja), bo prawdziwe dostawy jeszcze nie przychodzą. Produkcja:
+# kawosz.duckdb, _dostawy, docs/kwarantanna (to samo, co bez zmiennych KAWOSZ_*).
+kawosz_baza = "_symulacja/kawosz.duckdb"
+kawosz_dostawy = "_symulacja/dostawy"
+kawosz_raporty = "_symulacja/kwarantanna"
 
 [tool.pypyr.shortcuts]
 install = { pipeline_name = "dev/install" }
@@ -85,6 +91,11 @@ set_role = { pipeline_name = "dev/set_role" }
 precommit = { pipeline_name = "dev/precommit" }
 render_er = { pipeline_name = "dev/render_db_er_diagram" }
 er_explorer = { pipeline_name = "dev/er_explorer" }
+# Kawosz: dane, symulacja nocnego potoku i noc na żądanie
+dane = { pipeline_name = "dev/dane" }
+symulacja = { pipeline_name = "dev/symulacja" }
+noc = { pipeline_name = "dev/noc" }
+start_inngest = { pipeline_name = "dev/start_inngest" }
 
 [tool.poetry]
 package-mode = false

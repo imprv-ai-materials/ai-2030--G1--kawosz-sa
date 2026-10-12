@@ -1,0 +1,33 @@
+# Jedna noc na żądanie przez Inngest: wysyła zdarzenie kawosz/noc.uruchom dla podanego dnia, a funkcję wykonuje
+# proces z `pypyr start_be` (albo start_worker na hoście). Przebieg krok po kroku widać w panelu Inngest.
+#
+#     pypyr noc dzien=2026-09-30
+context_parser: pypyr.parser.keyvaluepairs
+steps:
+  - pypyr.steps.debug
+  - pypyr.steps.configvars
+
+  - name: pypyr.steps.default
+    in:
+      defaults:
+        dzien: '2026-09-30'
+
+  # W devcontainerze INNGEST_DEV=http://inngest:8288 jest już ustawione; na hoście bierzemy port z pyproject.toml.
+  - name: pypyr.steps.envget
+    in:
+      envGet:
+        - env: INNGEST_DEV
+          key: inngest_dev
+          default: '{inngest_dev_url}'
+
+  - name: pypyr.steps.env
+    in:
+      env:
+        set:
+          PYTHONPATH: 'api'
+          INNGEST_DEV: '{inngest_dev}'
+
+  - name: pypyr.steps.cmd
+    description: Zdarzenie kawosz/noc.uruchom dla {dzien}
+    in:
+      cmd: poetry run python -m api.inngest_app --dzien {dzien} --wyslij

@@ -13,7 +13,9 @@
 # picks free host ports), so this file publishes nothing and can't clash with a
 # native `docker compose` / Tilt run, or the known orphan-container :5439 clash.
 
-name: smart-wroclaw-devcontainer
+# Własna nazwa projektu compose: od niej zależą nazwy wolumenów (.venv, node_modules). Z nazwą z szablonu
+# (smart-wroclaw-devcontainer) ten kontener dzieliłby .venv z innym repozytorium zbudowanym z tego szablonu.
+name: kawosz-sa-devcontainer
 
 services:
   # The devcontainer itself. Toolchain image + the mounted source tree. It just
@@ -28,13 +30,13 @@ services:
     entrypoint: ["/usr/local/bin/devcontainer-entrypoint.sh"]
     command: sleep infinity
     volumes:
-      - ..:/workspaces/smart_wroclaw:cached
+      - ..:/workspaces/kawosz_sa:cached
       # Keep the Linux virtualenv and node_modules in named volumes so they never
       # collide with a host-built .venv / ui/node_modules on the bind mount (a
       # macOS/Windows venv or native module won't run under Linux) — and so they
       # survive rebuilds and stay off the slow bind mount.
-      - venv:/workspaces/smart_wroclaw/.venv
-      - ui-node-modules:/workspaces/smart_wroclaw/ui/node_modules
+      - venv:/workspaces/kawosz_sa/.venv
+      - ui-node-modules:/workspaces/kawosz_sa/ui/node_modules
       # Same rationale as node_modules: keep Next.js/Turbopack's build cache in a
       # named volume so the container (a non-host uid) never writes into the
       # host-owned .next on the bind mount — that cross-uid write is what triggers
@@ -42,7 +44,7 @@ services:
       # NOTE: because this makes ui/.next a MOUNT POINT, `rm -rf ui/.next` fails
       # inside the container with "Device or resource busy" — clear its contents
       # instead (`find ui/.next -mindepth 1 -delete`, as dev/start_ui.yaml does).
-      - ui-next:/workspaces/smart_wroclaw/ui/.next
+      - ui-next:/workspaces/kawosz_sa/ui/.next
     environment:
       # Override the host-oriented values in api/.env: inside this network
       # Postgres is `db:5432` and the Inngest dev server is `inngest:8288`.

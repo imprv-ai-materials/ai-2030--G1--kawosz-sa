@@ -12,9 +12,11 @@ Każdy krok to osobna funkcja, którą orkiestrator (inngest_app.py) uruchamia j
 1. `wczytaj`: pliki wsadu → schemat roboczy `wsad_RRRRMMDD` w kawosz.duckdb. Opublikowane tabele bez zmian.
 2. `sprawdz`: reguły jakości źródła na „kandydacie”, czyli opublikowanych tabelach z podmienionymi wierszami
    wsadu (widoki tymczasowe o nazwach tabel, więc reguły działają bez zmian). Przy błędzie blokującym zapisuje
-   raport naruszeń w docs/kwarantanna/.
+   raport naruszeń w docs/kwarantanna/. Wycenę wsadu (ile przychodu niesie) liczy orkiestrator na widokach
+   z `widok_wsadu`, bo definicja przychodu należy do revenue_bc.
 3. `odloz` (błąd blokujący): wiersze wsadu → tabela `kwarantanna`; opublikowane tabele bez zmian.
    `opublikuj` (brak błędu blokującego): wiersze wsadu → opublikowane tabele.
+   Oba kroki zapisują status, wycenę i wynik każdej reguły w tabelach `wsady` i `naruszenia` (panel jakości).
 4. `sprzataj`: usuwa schemat roboczy.
 
 Każdy krok jest idempotentny, więc ponowienie po awarii albo drugi przebieg tej samej nocy daje te same liczby:
@@ -45,6 +47,7 @@ class Tabela:
     # Klucz, po którym wiersz wsadu zastępuje opublikowane wiersze. Pusty: tabela przychodzi jako pełna migawka
     # (słownik), a jej brak w dostawie zostawia opublikowaną wersję.
     klucz: tuple[str, ...] = ()
+    przychod: bool = False  # dokumenty, z których definicja liczy przychód (wycena wsadu)
 
     @property
     def migawka(self) -> bool:
@@ -53,14 +56,14 @@ class Tabela:
 
 TABELE: dict[str, list[Tabela]] = {
     "pos": [
-        Tabela("pos_paragony", ("plik",)),
+        Tabela("pos_paragony", ("plik",), przychod=True),
         Tabela("pos_pliki", ("plik",)),
-        Tabela("pos_pozycje", ("lokal", "nr_paragonu")),
+        Tabela("pos_pozycje", ("lokal", "nr_paragonu"), przychod=True),
         Tabela("lokale"),
         Tabela("pos_produkty"),
     ],
     "erp": [
-        Tabela("erp_faktury", ("nr_faktury",)),
+        Tabela("erp_faktury", ("nr_faktury",), przychod=True),
         Tabela("erp_pozycje", ("nr_faktury",)),
         Tabela("erp_platnosci", ("nr_faktury", "data_platnosci")),
         Tabela("erp_kartoteka"),
@@ -68,10 +71,11 @@ TABELE: dict[str, list[Tabela]] = {
         Tabela("erp_kontrahenci_archiwum"),
     ],
     "ecom": [
-        Tabela("ecom_zamowienia", ("id",)),
+        Tabela("ecom_zamowienia", ("id",), przychod=True),
         Tabela("ecom_pozycje", ("id_zamowienia",)),
-        Tabela("ecom_subskrypcje", ("id", "data_platnosci")),
-        Tabela("karty_podarunkowe", ("kod",)),  # realizacja karty sprzedanej wcześniej zmienia istniejący wiersz
+        Tabela("ecom_subskrypcje", ("id", "data_platnosci"), przychod=True),
+        # realizacja karty sprzedanej wcześniej zmienia istniejący wiersz
+        Tabela("karty_podarunkowe", ("kod",), przychod=True),
         Tabela("kursy_nbp", ("data",)),
         Tabela("ecom_produkty"),
     ],
@@ -133,17 +137,41 @@ def _przygotuj_rejestry(con: duckdb.DuckDBPyConnection) -> None:
         CREATE TABLE IF NOT EXISTS wsady (
             wsad VARCHAR, zrodlo VARCHAR, dzien DATE, status VARCHAR, wiersze BIGINT, reguly VARCHAR[],
             raport VARCHAR, zapisano TIMESTAMP);
+        -- wycena wsadu (dodana później, więc też dla tabeli założonej przez starszą wersję potoku)
+        ALTER TABLE wsady ADD COLUMN IF NOT EXISTS przychod_netto DECIMAL(14,2);
+        ALTER TABLE wsady ADD COLUMN IF NOT EXISTS zawyzenie DECIMAL(14,2);
+        ALTER TABLE wsady ADD COLUMN IF NOT EXISTS wycena_uwaga VARCHAR;
+        CREATE TABLE IF NOT EXISTS naruszenia (
+            wsad VARCHAR, zrodlo VARCHAR, dzien DATE, regula VARCHAR, poziom VARCHAR, sprawdzone BIGINT,
+            bledne BIGINT, blad VARCHAR);
         """
     )
 
 
-def _zapisz_status(con, zrodlo: str, dzien: date, status: str, wiersze: int, reguly: list[str], raport_md) -> None:
+def _zapisz_status(
+    con, zrodlo: str, dzien: date, status: str, wiersze: int, sprawdzenie: dict, wycena: dict, raport_md
+) -> None:
+    """Status, wycena i wynik każdej reguły wsadu w miejsce poprzedniego zapisu tego wsadu."""
     wsad = id_wsadu(zrodlo, dzien)
     con.execute("DELETE FROM wsady WHERE wsad = ?", [wsad])
     con.execute(
-        "INSERT INTO wsady VALUES (?, ?, ?, ?, ?, ?, ?, now()::TIMESTAMP)",
-        [wsad, zrodlo, dzien, status, wiersze, reguly, raport_md],
+        """INSERT INTO wsady BY NAME SELECT ? AS wsad, ? AS zrodlo, ? AS dzien, ? AS status, ? AS wiersze,
+               ? AS reguly, ? AS raport, now()::TIMESTAMP AS zapisano, ? AS przychod_netto, ? AS zawyzenie,
+               ? AS wycena_uwaga""",
+        [
+            wsad, zrodlo, dzien, status, wiersze, sprawdzenie["blokujace"], raport_md,
+            wycena.get("przychod_netto"), wycena.get("zawyzenie"), wycena.get("uwaga"),
+        ],
     )
+    con.execute("DELETE FROM naruszenia WHERE wsad = ?", [wsad])
+    if sprawdzenie["reguly"]:
+        con.executemany(
+            "INSERT INTO naruszenia VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                [wsad, zrodlo, dzien, r["id"], r["poziom"], r["sprawdzone"], r["bledne"], r["blad"]]
+                for r in sprawdzenie["reguly"]
+            ],
+        )
 
 
 # --- 1. Wczytanie ---
@@ -192,24 +220,39 @@ def _wczytaj_pliki_z_kas(con: duckdb.DuckDBPyConnection, katalog: Path, schemat:
 # --- 2. Reguły jakości ---
 
 
-def _kandydat(con: duckdb.DuckDBPyConnection, dzien: date) -> None:
+def _kandydat(con: duckdb.DuckDBPyConnection, dzien: date, tylko_zrodlo: str | None = None) -> None:
     """Widoki tymczasowe o nazwach opublikowanych tabel: opublikowane wiersze z podmienionymi wierszami wsadu.
 
     Czyli to, co byłoby opublikowane po publikacji całej dostawy z tej nocy. Reguły czytają tabele bez schematu,
     więc trafiają na widoki. Do tabel sięgamy przez nazwę bazy, bo `main` wskazałby z powrotem na widok.
+
+    `tylko_zrodlo`: tabele z dokumentami przychodu mają tylko wiersze wsadu tego źródła (pozostałe są puste),
+    a słowniki i kursy jak u kandydata. Na takich widokach definicja przychodu liczy przychód samego wsadu.
     """
     baza, schemat = con.execute("SELECT current_database()").fetchone()[0], schemat_wsadu(dzien)
-    for t in _tabele_wsadu(con, dzien, ZRODLA):
-        wsad = f'"{baza}".{schemat}.{t.nazwa}'
-        if t.migawka:
-            sql = f"SELECT * FROM {wsad}"
-        else:
-            klucz = ", ".join(t.klucz)
-            sql = (
-                f'SELECT * FROM "{baza}".main.{t.nazwa} ANTI JOIN {wsad} USING ({klucz})'
-                f" UNION ALL BY NAME SELECT * FROM {wsad}"
-            )
-        con.execute(f"CREATE OR REPLACE TEMP VIEW {t.nazwa} AS {sql}")
+    w_wsadzie = {t.nazwa for t in _tabele_wsadu(con, dzien, ZRODLA)}
+    for zrodlo, tabele in TABELE.items():
+        for t in tabele:
+            wsad, opublikowana = f'"{baza}".{schemat}.{t.nazwa}', f'"{baza}".main.{t.nazwa}'
+            if tylko_zrodlo and t.przychod:
+                wiersze_wsadu = zrodlo == tylko_zrodlo and t.nazwa in w_wsadzie
+                sql = f"SELECT * FROM {wsad}" if wiersze_wsadu else f"SELECT * FROM {opublikowana} LIMIT 0"
+            elif t.nazwa not in w_wsadzie:
+                continue
+            elif t.migawka:
+                sql = f"SELECT * FROM {wsad}"
+            else:
+                klucz = ", ".join(t.klucz)
+                sql = (
+                    f"SELECT * FROM {opublikowana} ANTI JOIN {wsad} USING ({klucz})"
+                    f" UNION ALL BY NAME SELECT * FROM {wsad}"
+                )
+            con.execute(f"CREATE OR REPLACE TEMP VIEW {t.nazwa} AS {sql}")
+
+
+def widok_wsadu(con: duckdb.DuckDBPyConnection, zrodlo: str, dzien: date) -> None:
+    """Widoki, w których z dokumentów przychodu jest tylko wsad `zrodlo` z dnia D (do wyceny wsadu)."""
+    _kandydat(con, dzien, tylko_zrodlo=zrodlo)
 
 
 def sprawdz(ust: Ustawienia, zrodlo: str, dzien: date) -> dict:
@@ -241,19 +284,24 @@ def sprawdz(ust: Ustawienia, zrodlo: str, dzien: date) -> dict:
         "blokujace": blokujace,
         "ostrzegajace": ostrzegajace,
         "raport": _wzgledna(sciezka) if sciezka else None,
+        "reguly": [
+            {"id": w.regula.id, "poziom": str(w.regula.poziom), "sprawdzone": w.wiersze, "bledne": w.bledne,
+             "blad": w.blad}
+            for w in wyniki
+        ],
     }
 
 
 # --- 3. Kwarantanna albo publikacja ---
 
 
-def odloz(ust: Ustawienia, zrodlo: str, dzien: date, blokujace: list[str]) -> dict[str, int]:
+def odloz(ust: Ustawienia, zrodlo: str, dzien: date, sprawdzenie: dict, wycena: dict) -> dict[str, int]:
     """Wiersze wsadu → kwarantanna (jako JSON, jeden wiersz tabeli na wiersz), w miejsce poprzedniego zapisu wsadu.
 
     Opublikowane tabele zostają bez zmian, więc raporty nie widzą tego wsadu (i ewentualnie mają poprzednią,
     dobrą wersję tego dnia).
     """
-    wsad, schemat = id_wsadu(zrodlo, dzien), schemat_wsadu(dzien)
+    wsad, schemat, blokujace = id_wsadu(zrodlo, dzien), schemat_wsadu(dzien), sprawdzenie["blokujace"]
     raport_md = _wzgledna(sciezka_raportu(ust, zrodlo, dzien))
     con = connect(read_only=False, db_path=ust.baza)
     try:
@@ -269,14 +317,14 @@ def odloz(ust: Ustawienia, zrodlo: str, dzien: date, blokujace: list[str]) -> di
         wiersze = dict(
             con.execute("SELECT tabela, count(*) FROM kwarantanna WHERE wsad = ? GROUP BY 1", [wsad]).fetchall()
         )
-        _zapisz_status(con, zrodlo, dzien, "kwarantanna", sum(wiersze.values()), blokujace, raport_md)
+        _zapisz_status(con, zrodlo, dzien, "kwarantanna", sum(wiersze.values()), sprawdzenie, wycena, raport_md)
         con.execute("COMMIT")
         return {t.nazwa: wiersze.get(t.nazwa, 0) for t in tabele}
     finally:
         con.close()
 
 
-def opublikuj(ust: Ustawienia, zrodlo: str, dzien: date) -> dict[str, int]:
+def opublikuj(ust: Ustawienia, zrodlo: str, dzien: date, sprawdzenie: dict, wycena: dict) -> dict[str, int]:
     """Wiersze wsadu → opublikowane tabele, w jednej transakcji: najpierw usuwa wiersze o tych samych kluczach
     (migawka: całą tabelę), potem wstawia wsad. Zdejmuje wsad z kwarantanny, jeśli wcześniej tam trafił."""
     wsad, schemat = id_wsadu(zrodlo, dzien), schemat_wsadu(dzien)
@@ -298,7 +346,7 @@ def opublikuj(ust: Ustawienia, zrodlo: str, dzien: date) -> dict[str, int]:
             con.execute(f"INSERT INTO main.{t.nazwa} BY NAME SELECT * FROM {schemat}.{t.nazwa}")
             wiersze[t.nazwa] = con.execute(f"SELECT count(*) FROM {schemat}.{t.nazwa}").fetchone()[0]
         con.execute("DELETE FROM kwarantanna WHERE wsad = ?", [wsad])
-        _zapisz_status(con, zrodlo, dzien, "opublikowany", sum(wiersze.values()), [], None)
+        _zapisz_status(con, zrodlo, dzien, "opublikowany", sum(wiersze.values()), sprawdzenie, wycena, None)
         con.execute("COMMIT")
     finally:
         con.close()
