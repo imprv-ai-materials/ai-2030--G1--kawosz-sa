@@ -1,0 +1,159 @@
+# Założenia biznesowe decyzji o wizycie opiekuna (próg: p · s · V > C).
+# Jedyne źródło tych liczb - kalkulator i Radar czytają tylko stąd, niczego nie hardkodują.
+#
+# Każda liczba: wartosc, przedzial ([min, max] albo null, gdy źródło go nie podaje),
+# wlasciciel (kto odpowiada za liczbę), zrodlo (plik + cytat).
+# Parametry złożone (V, C, budżet) mają `rachunek` ze składników - zmieniając składnik,
+# przelicz też `wartosc` i `przedzial` parametru.
+
+wersja: 1
+data_ustalen: 2026-10-06
+
+parametry:
+
+  V:
+    opis: wartość utrzymanego biura = marża brutto za okres, przez który biuro zostaje po kryzysie
+    wartosc: 24192
+    przedzial: [18816, 29568]
+    jednostka: zł
+    wlasciciel: Anna Lis (dyrektorka finansowa)
+    zrodlo:
+      plik: docs/warsztat_2026-10-06.md
+      cytat: "to marża, nie przychód - nie podstawiajcie mi abonamentu jako wartości biura"
+    rachunek: marza_mies × miesiace_po_kryzysie = 1344 × 18; przedział z miesięcy 14 i 22
+    skladniki:
+      marza_mies:
+        wartosc: 1344
+        przedzial: null
+        jednostka: zł/mies.
+        wlasciciel: Anna Lis (dyrektorka finansowa)
+        zrodlo:
+          plik: docs/warsztat_2026-10-06.md
+          cytat: "Marża brutto z biura (abonament, kawa, serwis, minus koszt kawy i ekspresu): średnio 1 344 zł miesięcznie."
+      miesiace_po_kryzysie:
+        wartosc: 18
+        przedzial: [14, 22]
+        jednostka: mies.
+        wlasciciel: Anna Lis (dyrektorka finansowa)
+        zrodlo:
+          plik: docs/warsztat_2026-10-06.md
+          cytat: "Biuro, które zostaje po kryzysie, zostaje z nami średnio jeszcze 18 miesięcy. Rozrzut duży: „zależnie od segmentu od ok. 14 do 22 miesięcy”."
+    otwarte:
+      - Czy 1 344 zł to średnia marża wszystkich biur, czy biur zagrożonych odejściem?
+      - Jaki jest rozrzut marży? Teraz przedział V wynika tylko z liczby miesięcy.
+      - Czy liczymy V osobno dla segmentów (14–22 mies.), czy jedną średnią?
+      - Czy dyskontujemy 18 miesięcy marży, czy liczymy nominalnie?
+
+  C:
+    opis: koszt jednej wizyty = koszt wizyty + rabat; rabat dostaje praktycznie każde odwiedzone biuro
+    wartosc: 1260
+    przedzial: null
+    jednostka: zł
+    wlasciciel: Marek Wójcik (dyrektor sprzedaży B2B)
+    zrodlo:
+      plik: docs/warsztat_2026-10-06.md
+      cytat: "Rabat dajemy praktycznie na każdej takiej wizycie, także tam, gdzie klient i tak nie zamierzał odchodzić - „nie wiemy tego z góry”."
+    rachunek: koszt_wizyty + rabat_pct × abonament_mies × rabat_mies = 300 + 0.10 × 3200 × 3
+    skladniki:
+      koszt_wizyty:
+        wartosc: 300
+        przedzial: null
+        jednostka: zł
+        wlasciciel: Marek Wójcik (dyrektor sprzedaży B2B)
+        zrodlo:
+          plik: docs/warsztat_2026-10-06.md
+          cytat: "„wizyta kosztuje nas jakieś 300 zł” - dojazd plus pół dnia opiekuna."
+      rabat_pct:
+        wartosc: 0.10
+        przedzial: null
+        jednostka: udział abonamentu
+        wlasciciel: Marek Wójcik (dyrektor sprzedaży B2B)
+        zrodlo:
+          plik: docs/warsztat_2026-10-06.md
+          cytat: "Na wizycie opiekun zwykle proponuje rabat, żeby zatrzymać biuro: 10% abonamentu przez 3 miesiące."
+      rabat_mies:
+        wartosc: 3
+        przedzial: null
+        jednostka: mies.
+        wlasciciel: Marek Wójcik (dyrektor sprzedaży B2B)
+        zrodlo:
+          plik: docs/warsztat_2026-10-06.md
+          cytat: "Na wizycie opiekun zwykle proponuje rabat, żeby zatrzymać biuro: 10% abonamentu przez 3 miesiące."
+      abonament_mies:
+        wartosc: 3200
+        przedzial: null
+        jednostka: zł/mies.
+        wlasciciel: Marek Wójcik (dyrektor sprzedaży B2B)
+        zrodlo:
+          plik: docs/warsztat_2026-10-06.md
+          cytat: "Średni abonament biura to 3 200 zł/mies."
+    otwarte:
+      - Czy 300 zł to koszt krańcowy (dojazd), czy pełny z pół dniem pracy opiekuna?
+      - Czy biuro, które mimo wizyty odchodzi, i tak dostaje rabat? Jeśli nie, C nieudanej wizyty to ok. 300 zł.
+      - Czy w zagrożonych biurach abonament wynosi średnio 3 200 zł, czy inaczej?
+      - Kto odpowiada za C? Marek podał 300 zł, finanse jej nie potwierdziły.
+
+  s:
+    opis: skuteczność wizyty = odsetek biur chcących odejść, które po wizycie zostają
+    wartosc: 0.30
+    przedzial: [0.20, 0.40]
+    jednostka: udział
+    wlasciciel: Marek Wójcik (dyrektor sprzedaży B2B)
+    zrodlo:
+      plik: docs/warsztat_2026-10-06.md
+      cytat: "W pilotażu wiosną 2025 opiekunowie odwiedzili 40 zagrożonych biur, zostało 12. (…) „równie dobrze mogło to być 20 albo 40 procent”."
+    rachunek: zostalo / odwiedzone = 12 / 40; przedział podał Marek (95% Wilsona dla 12/40 to 0.18–0.45)
+    skladniki:
+      pilotaz_odwiedzone:
+        wartosc: 40
+        przedzial: null
+        jednostka: biura
+        wlasciciel: Marek Wójcik (dyrektor sprzedaży B2B)
+        zrodlo:
+          plik: docs/warsztat_2026-10-06.md
+          cytat: "W pilotażu wiosną 2025 opiekunowie odwiedzili 40 zagrożonych biur, zostało 12."
+      pilotaz_zostalo:
+        wartosc: 12
+        przedzial: null
+        jednostka: biura
+        wlasciciel: Marek Wójcik (dyrektor sprzedaży B2B)
+        zrodlo:
+          plik: docs/warsztat_2026-10-06.md
+          cytat: "W pilotażu wiosną 2025 opiekunowie odwiedzili 40 zagrożonych biur, zostało 12."
+    otwarte:
+      - Czy wszystkie 40 biur z pilotażu naprawdę zamierzało odejść? Jak je wybrano?
+      - Pilotaż nie miał grupy kontrolnej. Ile biur zostałoby bez wizyty?
+      - Czy skuteczność zależy od segmentu albo opiekuna?
+
+  budzet_wizyt:
+    opis: liczba dodatkowych wizyt ratunkowych na kwartał; twardy limit bez nowych etatów
+    wartosc: 60
+    przedzial: null
+    jednostka: wizyty/kwartał
+    wlasciciel: Marek Wójcik (dyrektor sprzedaży B2B) - podał liczbę; kto zatwierdza, nieustalone
+    zrodlo:
+      plik: docs/warsztat_2026-10-06.md
+      cytat: "Budżet: 6 opiekunów, każdy da radę zrobić 10 dodatkowych wizyt w kwartale. Więcej się nie da bez nowych etatów."
+    rachunek: opiekunowie × wizyty_na_opiekuna = 6 × 10
+    skladniki:
+      opiekunowie:
+        wartosc: 6
+        przedzial: null
+        jednostka: osoby
+        wlasciciel: Marek Wójcik (dyrektor sprzedaży B2B)
+        zrodlo:
+          plik: docs/warsztat_2026-10-06.md
+          cytat: "Budżet: 6 opiekunów, każdy da radę zrobić 10 dodatkowych wizyt w kwartale."
+      wizyty_na_opiekuna:
+        wartosc: 10
+        przedzial: null
+        jednostka: wizyty/kwartał
+        wlasciciel: Marek Wójcik (dyrektor sprzedaży B2B)
+        zrodlo:
+          plik: docs/warsztat_2026-10-06.md
+          cytat: "Budżet: 6 opiekunów, każdy da radę zrobić 10 dodatkowych wizyt w kwartale."
+    otwarte:
+      - Kto zatwierdza budżet wizyt na kolejny kwartał - Marek czy zarząd?
+      - „Dodatkowych” w stosunku do czego? Czy bieżące wizyty też mogą służyć ratowaniu biur?
+      - Czy 10 wizyt to limit na opiekuna, czy wspólna pula 60?
+      - Czy jest też limit złotówkowy na rabaty?
