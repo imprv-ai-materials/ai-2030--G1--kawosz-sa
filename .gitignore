@@ -24,3 +24,6 @@ _volumes/
 kawosz.duckdb
 kawosz.duckdb.wal
 _staging/
+
+# Katalog dostaw nocnego potoku (api/api/data_platform/noc.py)
+_dostawy/

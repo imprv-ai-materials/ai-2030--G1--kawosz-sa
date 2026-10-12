@@ -13,8 +13,11 @@ Uruchomienie: PYTHONPATH=api poetry run python -m api.data_platform.load_raw
 import re
 import shutil
 import zipfile
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
+import duckdb
 
 from api.adapters.duckdb_conn import PROJECT_ROOT, connect
 from api.data_platform.kontrakty.kontrakt import wczytaj
@@ -36,12 +39,12 @@ def wzorzec_pliku(plik: str) -> re.Pattern:
     return re.compile(do_dnia + r"(?P<dzien>\d{4}-\d{2}-\d{2})")
 
 
-def rejestr_plikow(katalog: Path) -> list[tuple]:
+def rejestr_plikow(katalog: Path, z_czasem_dostawy: bool = False) -> list[tuple]:
     """Jeden wiersz na plik z kasy: nazwa, lokal i dzień z nazwy, kolumny z nagłówka, liczba wierszy, czas dostawy.
 
     Archiwum ZIP nie ma czasu dostawy (wszystkie pliki mają w nim datę spakowania 30.09.2026 23:59), więc
-    czas_dostawy = NULL i POS-13 nie ma czego sprawdzić. W nocnym potoku trafia tu czas, w którym plik
-    pojawił się w katalogu dostaw.
+    czas_dostawy = NULL i POS-13 nie ma czego sprawdzić. Nocny potok (`z_czasem_dostawy`) zapisuje czas
+    modyfikacji pliku w katalogu dostaw, czyli moment, w którym plik tam dotarł (czas lokalny ze strefy kontraktu).
     """
     dostawa = KONTRAKT_POS.dostawa
     wzorzec = wzorzec_pliku(dostawa.plik)
@@ -58,10 +61,15 @@ def rejestr_plikow(katalog: Path) -> list[tuple]:
                 date.fromisoformat(nazwa["dzien"]) if nazwa else None,
                 naglowek.split(dostawa.separator) if naglowek else [],
                 wiersze,
-                None,
+                _czas_dostawy(sciezka) if z_czasem_dostawy else None,
             )
         )
     return rejestr
+
+
+def _czas_dostawy(sciezka: Path) -> datetime:
+    strefa = ZoneInfo(KONTRAKT_POS.dostawa.strefa)
+    return datetime.fromtimestamp(sciezka.stat().st_mtime, strefa).replace(tzinfo=None)
 
 
 def typy_paragonow(kolumny_w_plikach: set[str]) -> dict[str, str]:
@@ -82,6 +90,38 @@ def extract_paragony() -> Path:
     return PARAGONY_DIR / "paragony"
 
 
+def zapisz_rejestr(con: duckdb.DuckDBPyConnection, tabela: str, rejestr: list[tuple]) -> None:
+    con.execute(
+        f"""
+        CREATE OR REPLACE TABLE {tabela} (
+            plik VARCHAR, lokal INTEGER, dzien DATE, kolumny VARCHAR[], wiersze INTEGER, czas_dostawy TIMESTAMP)
+        """
+    )
+    if rejestr:
+        con.executemany(f"INSERT INTO {tabela} VALUES (?, ?, ?, ?, ?, ?)", rejestr)
+
+
+def wczytaj_paragony(con: duckdb.DuckDBPyConnection, pliki: str, tabela: str, rejestr: list[tuple]) -> None:
+    """Pliki z kasy (`pliki`: ścieżka lub glob) → tabela z formatem i typami z kontraktu i kolumną `plik`."""
+    dostawa = KONTRAKT_POS.dostawa
+    con.execute(
+        f"""
+        CREATE OR REPLACE TABLE {tabela} AS
+        SELECT * EXCLUDE (filename), parse_filename(filename) AS plik
+        FROM read_csv(?, encoding = ?, delim = ?, decimal_separator = ?,
+                      header = ?, types = ?, union_by_name = true, filename = true)
+        """,
+        [
+            pliki,
+            dostawa.kodowanie,
+            dostawa.separator,
+            dostawa.separator_dziesietny,
+            dostawa.naglowek,
+            typy_paragonow({kolumna for wiersz in rejestr for kolumna in wiersz[3]}),
+        ],
+    )
+
+
 def parquet_files():
     for path in sorted(DATA_DIR.rglob("*.parquet")):
         if EXCLUDED_DIRS.isdisjoint(path.relative_to(DATA_DIR).parts):
@@ -97,32 +137,10 @@ def main() -> None:
 
         katalog = extract_paragony()
         rejestr = rejestr_plikow(katalog)
-        con.execute(
-            """
-            CREATE OR REPLACE TABLE pos_pliki (
-                plik VARCHAR, lokal INTEGER, dzien DATE, kolumny VARCHAR[], wiersze INTEGER, czas_dostawy TIMESTAMP)
-            """
-        )
-        con.executemany("INSERT INTO pos_pliki VALUES (?, ?, ?, ?, ?, ?)", rejestr)
+        zapisz_rejestr(con, "pos_pliki", rejestr)
         print(f"pos_pliki: {len(rejestr)} plików")
 
-        dostawa = KONTRAKT_POS.dostawa
-        con.execute(
-            """
-            CREATE OR REPLACE TABLE pos_paragony AS
-            SELECT * EXCLUDE (filename), parse_filename(filename) AS plik
-            FROM read_csv(?, encoding = ?, delim = ?, decimal_separator = ?,
-                          header = ?, types = ?, union_by_name = true, filename = true)
-            """,
-            [
-                str(katalog / "*.csv"),
-                dostawa.kodowanie,
-                dostawa.separator,
-                dostawa.separator_dziesietny,
-                dostawa.naglowek,
-                typy_paragonow({kolumna for wiersz in rejestr for kolumna in wiersz[3]}),
-            ],
-        )
+        wczytaj_paragony(con, str(katalog / "*.csv"), "pos_paragony", rejestr)
         print(f"pos_paragony: {con.table('pos_paragony').count('*').fetchone()[0]} wierszy")
     finally:
         con.close()

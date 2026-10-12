@@ -41,14 +41,14 @@ def _blokuje(wynik: Wynik) -> str:
     return "**tak**" if wynik.blokuje else "nie (ostrzega)"
 
 
-def markdown(wyniki: list[Wynik], od: date, dzien: date, polecenie: str) -> str:
+def markdown(wyniki: list[Wynik], od: date, dzien: date, polecenie: str, tytul: str | None = None) -> str:
     naruszone = [w for w in wyniki if not w.ok]
     blokujace = [w.regula.id for w in naruszone if w.blokuje]
     ostrzegajace = [w for w in naruszone if not w.blokuje]
     niewykonane = [w.regula.id for w in wyniki if w.blad]
 
     linie = [
-        f"# Naruszenia reguł jakości: {od} – {dzien}",
+        f"# {tytul or f'Naruszenia reguł jakości: {od} – {dzien}'}",
         "",
         f"Wynik uruchomienia {len(wyniki)} reguł z [`reguly.md`](reguly.md) na danych od {od} do {dzien}"
         " (`kawosz.duckdb`). Każda reguła sprawdza wszystkie rekordy z zakresu, a Pandera zbiera wszystkie"
