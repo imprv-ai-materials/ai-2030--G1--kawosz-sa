@@ -1,37 +1,204 @@
-# Katalog cech modelu churnu: rodzina → cecha → opis jednym zdaniem.
-# Rodzina = plik sql/<rodzina>.sql (pełne definicje i okna w komentarzach). Każda cecha jest liczona na początek dnia
+# Katalog cech modelu churnu: rodzina → cecha → karta cechy.
+# Rodzina = plik sql/<rodzina>.sql (pełna definicja w komentarzach pliku). Każda cecha jest liczona na początek dnia
 # t0, tylko z rekordów, które do t0 dotarły (opóźnienia źródeł: docs/opoznienia_danych.md), dla biur z aktywną umową
-# bez wypowiedzenia złożonego przed t0.
+# bez wypowiedzenia złożonego przed t0. Kolejność cech to kolejność wejść modelu v3_katalog (model.py).
+#
+# Karta leży obok kodu: zmiana definicji w sql/ i zmiana karty idą w tym samym pull requeście.
+# Pola karty (wszystkie wymagane, pilnuje ich api/tests/ai/features/test_katalog.py):
+#   opis        co cecha mówi o biurze, prostym językiem, bez nazw tabel
+#   sql         plik, który ją liczy (sql/<rodzina>.sql)
+#   zrodlo      system i tabele, z których bierze wartość (bez tabel populacji, wspólnych dla wszystkich plików)
+#   okno        z jakiego okresu przed t0 są dane
+#   opoznienie  z jakim opóźnieniem dane docierają i do którego dnia są znane w t0
+#   wlasciciel  rola, która odpowiada za definicję i odpowiada na pytania o nią
+#   wersja      GŁÓWNA.PODRZĘDNA.POPRAWKA: główna (2.0.0), gdy zmieniają się wartości cechy (okno, źródło,
+#               opóźnienie, znaczenie), więc modele na niej uczone trzeba przeliczyć; podrzędna (1.1.0), gdy zmienia
+#               się SQL, a wartości nie; poprawka (1.0.1), gdy zmienia się tylko karta
+# Których modeli dotyczy cecha, nie wpisujemy: katalog.py wylicza to z wersji w ai/churn_model/versions/.
 
 umowa:
-  plan: Plan umowy (S, M, L albo XL) z ostatniego zdarzenia umowy znanego w t0.
-  cena_mies: Miesięczna cena z ostatniego znanego zdarzenia umowy, pusta, gdy jest ono starsze niż 366 dni przed t0.
-  staz_mies: Liczba miesięcy od startu umowy do t0.
-  dni_do_rocznicy: Liczba dni od t0 do najbliższej rocznicy startu umowy, w której umowa się odnawia albo kończy.
+  plan:
+    opis: Pakiet, który biuro ma w umowie (S, M, L albo XL), według ostatniej znanej zmiany umowy.
+    sql: sql/umowa.sql
+    zrodlo:
+      system: CRM
+      tabele: [crm_umowy_historia]
+    okno: ostatnie zdarzenie umowy z dnia t0 − 2 albo wcześniejszego, bez limitu wstecz
+    opoznienie: D+1, przyjęte (CRM nie ma kontraktu dostawy), więc w t0 znane są zdarzenia do t0 − 2
+    wlasciciel: Zespół danych
+    wersja: 1.0.0
+  cena_mies:
+    opis: >-
+      Ile biuro płaci miesięcznie według ostatniej znanej zmiany umowy. Pusta, gdy ostatnia zmiana jest starsza niż
+      rok, bo cena zmienia się przy każdym odnowieniu.
+    sql: sql/umowa.sql
+    zrodlo:
+      system: CRM
+      tabele: [crm_umowy_historia]
+    okno: ostatnie zdarzenie umowy z dnia t0 − 2 albo wcześniejszego, nie starsze niż 366 dni przed t0
+    opoznienie: D+1, przyjęte (CRM nie ma kontraktu dostawy), więc w t0 znane są zdarzenia do t0 − 2
+    wlasciciel: Zespół danych
+    wersja: 1.0.0
+  staz_mies:
+    opis: Ile miesięcy biuro jest klientem, licząc od startu umowy.
+    sql: sql/umowa.sql
+    zrodlo:
+      system: CRM
+      tabele: [crm_biura]
+    okno: od daty startu umowy do t0
+    opoznienie: nie dotyczy, bo data startu umowy w CRM się nie zmienia
+    wlasciciel: Zespół danych
+    wersja: 1.0.0
+  dni_do_rocznicy:
+    opis: Ile dni zostało do rocznicy umowy, czyli dnia, w którym umowa się odnawia albo kończy.
+    sql: sql/umowa.sql
+    zrodlo:
+      system: CRM
+      tabele: [crm_biura]
+    okno: od t0 do najbliższej rocznicy startu umowy (rocznica w dniu t0 daje 0)
+    opoznienie: nie dotyczy, bo data startu umowy w CRM się nie zmienia
+    wlasciciel: Zespół danych
+    wersja: 1.0.0
 
 uzycie:
-  zaparzenia_30d: Suma zaparzeń ze wszystkich ekspresów biura z 30 ostatnich dni telemetrii dostarczonej przed t0.
-  trend_zaparzen: Zaparzenia z 30 ostatnich znanych dni podzielone przez zaparzenia z 30 dni wcześniejszych.
-  bledy_60d: Suma błędów ze wszystkich ekspresów biura z 60 ostatnich dni telemetrii dostarczonej przed t0.
+  zaparzenia_30d:
+    opis: Ile kaw zaparzyły wszystkie ekspresy biura w ostatnich 30 dniach, o których już wiemy.
+    sql: sql/uzycie.sql
+    zrodlo:
+      system: IoT (telemetria ekspresów)
+      tabele: [iot_telemetria, iot_ekspresy]
+    okno: 30 dni pomiaru, od t0 − 32 do t0 − 3
+    opoznienie: 2 dni, zmierzone (data dostarczenia = dzień pomiaru + 2), więc w t0 znane są pomiary do t0 − 3
+    wlasciciel: Zespół danych
+    wersja: 1.0.0
+  trend_zaparzen:
+    opis: >-
+      Czy biuro pije więcej, czy mniej kawy niż miesiąc wcześniej: zaparzenia z ostatnich 30 dni podzielone przez
+      zaparzenia z 30 dni wcześniejszych. Poniżej 1 to spadek. Pusta, gdy wcześniej nie było zaparzeń.
+    sql: sql/uzycie.sql
+    zrodlo:
+      system: IoT (telemetria ekspresów)
+      tabele: [iot_telemetria, iot_ekspresy]
+    okno: od t0 − 32 do t0 − 3 w stosunku do od t0 − 62 do t0 − 33
+    opoznienie: 2 dni, zmierzone (data dostarczenia = dzień pomiaru + 2), więc w t0 znane są pomiary do t0 − 3
+    wlasciciel: Zespół danych
+    wersja: 1.0.0
+  bledy_60d:
+    opis: Ile błędów zgłosiły same ekspresy biura w ostatnich 60 dniach, o których już wiemy.
+    sql: sql/uzycie.sql
+    zrodlo:
+      system: IoT (telemetria ekspresów)
+      tabele: [iot_telemetria, iot_ekspresy]
+    okno: 60 dni pomiaru, od t0 − 62 do t0 − 3
+    opoznienie: 2 dni, zmierzone (data dostarczenia = dzień pomiaru + 2), więc w t0 znane są pomiary do t0 − 3
+    wlasciciel: Zespół danych
+    wersja: 1.0.0
 
 zamowienia:
-  dni_od_ostatniego_zamowienia: Liczba dni od ostatniej faktury z kawą znanej w t0 do t0.
+  dni_od_ostatniego_zamowienia:
+    opis: >-
+      Ile dni minęło od ostatniej faktury za kawę. Pusta, gdy biuro nie ma takiej faktury. Większość faktur jest
+      wystawiana na koniec miesiąca, więc wartość zależy też od dnia miesiąca.
+    sql: sql/zamowienia.sql
+    zrodlo:
+      system: ERP
+      tabele: [erp_faktury, erp_pozycje, erp_kontrahenci, erp_kontrahenci_archiwum, mapa_kontrahentow]
+    okno: ostatnia faktura z kawą z dnia t0 − 2 albo wcześniejszego, bez limitu wstecz
+    opoznienie: D+1 z kontraktu erp_faktury (projekt do akceptacji właściciela), więc w t0 znane są faktury do t0 − 2
+    wlasciciel: Zespół danych
+    wersja: 1.0.0
 
 platnosci:
-  sr_opoznienie_platnosci: Średnia liczba dni po 14-dniowym terminie dla płatności z 90 ostatnich dni znanych w t0.
+  sr_opoznienie_platnosci:
+    opis: >-
+      Ile dni po terminie biuro średnio płaci faktury. Termin to 14 dni od faktury, bo ERP go nie zapisuje.
+      Wartość ujemna oznacza płacenie przed terminem. Pusta, gdy w oknie nie było płatności.
+    sql: sql/platnosci.sql
+    zrodlo:
+      system: ERP
+      tabele: [erp_faktury, erp_platnosci, erp_kontrahenci, erp_kontrahenci_archiwum, mapa_kontrahentow]
+    okno: płatności z 90 dni, od t0 − 91 do t0 − 2
+    opoznienie: D+1 z kontraktu erp_faktury (projekt do akceptacji właściciela), więc w t0 znane są płatności do t0 − 2
+    wlasciciel: Zespół danych
+    wersja: 1.0.0
 
 serwis:
-  awarie_60d: Liczba zgłoszeń awarii w helpdesku z 60 ostatnich dni znanych w t0.
+  awarie_60d:
+    opis: Ile razy biuro zgłosiło awarię ekspresu w helpdesku w ostatnich 60 dniach.
+    sql: sql/serwis.sql
+    zrodlo:
+      system: Helpdesk
+      tabele: [helpdesk_zgloszenia]
+    okno: zgłoszenia z 60 dni, od t0 − 61 do t0 − 2
+    opoznienie: D+1, przyjęte (helpdesk nie ma kontraktu dostawy), więc w t0 znane są zgłoszenia do t0 − 2
+    wlasciciel: Zespół danych
+    wersja: 1.0.0
 
 relacja:
-  am_id: Identyfikator opiekuna klienta (AM) według stanu CRM z dnia eksportu, bo historii przypisań nie ma.
-  kontakty_am_90d: Liczba kontaktów opiekuna z biurem z 90 ostatnich dni znanych w t0.
-  nps_ostatni: Wynik ostatniej odpowiedzi biura na ankietę NPS znanej w t0, liczonej od dnia odpowiedzi, a nie wysyłki.
+  am_id:
+    opis: Który opiekun klienta prowadzi biuro. Według dzisiejszego stanu CRM, bo historii zmian opiekunów nie ma.
+    sql: sql/relacja.sql
+    zrodlo:
+      system: CRM
+      tabele: [crm_biura]
+    okno: stan z dnia eksportu CRM, ten sam dla każdego t0
+    opoznienie: nie dotyczy, bo CRM daje tylko bieżący stan, bez historii
+    wlasciciel: Zespół danych
+    wersja: 1.0.0
+  kontakty_am_90d:
+    opis: Ile razy opiekun klienta kontaktował się z biurem w ostatnich 90 dniach.
+    sql: sql/relacja.sql
+    zrodlo:
+      system: CRM
+      tabele: [crm_kontakty_am]
+    okno: kontakty z 90 dni, od t0 − 91 do t0 − 2
+    opoznienie: D+1, przyjęte (CRM nie ma kontraktu dostawy), więc w t0 znane są kontakty do t0 − 2
+    wlasciciel: Zespół danych
+    wersja: 1.0.0
+  nps_ostatni:
+    opis: >-
+      Ocena z ostatniej ankiety NPS, na którą biuro odpowiedziało (0–10). Liczy się dzień odpowiedzi, nie wysłania
+      ankiety. Pusta, gdy biuro jeszcze nie odpowiedziało.
+    sql: sql/relacja.sql
+    zrodlo:
+      system: CRM
+      tabele: [ankiety_nps]
+    okno: ostatnia odpowiedź z dnia t0 − 2 albo wcześniejszego, bez limitu wstecz
+    opoznienie: D+1, przyjęte (CRM nie ma kontraktu dostawy), więc w t0 znane są odpowiedzi do t0 − 2
+    wlasciciel: Zespół danych
+    wersja: 1.0.0
 
 firmografia:
-  liczba_pracownikow: Liczba pracowników biura według stanu CRM z dnia eksportu, bo historii nie ma.
-  branza: Branża biura według stanu CRM z dnia eksportu.
-  miasto: Miasto biura według stanu CRM z dnia eksportu.
+  liczba_pracownikow:
+    opis: Ilu pracowników ma biuro. Według dzisiejszego stanu CRM, bo historii zmian nie ma.
+    sql: sql/firmografia.sql
+    zrodlo:
+      system: CRM
+      tabele: [crm_biura]
+    okno: stan z dnia eksportu CRM, ten sam dla każdego t0
+    opoznienie: nie dotyczy, bo CRM daje tylko bieżący stan, bez historii
+    wlasciciel: Zespół danych
+    wersja: 1.0.0
+  branza:
+    opis: Branża, w której działa biuro. Według dzisiejszego stanu CRM.
+    sql: sql/firmografia.sql
+    zrodlo:
+      system: CRM
+      tabele: [crm_biura]
+    okno: stan z dnia eksportu CRM, ten sam dla każdego t0
+    opoznienie: nie dotyczy, bo CRM daje tylko bieżący stan, bez historii
+    wlasciciel: Zespół danych
+    wersja: 1.0.0
+  miasto:
+    opis: Miasto, w którym jest biuro. Według dzisiejszego stanu CRM.
+    sql: sql/firmografia.sql
+    zrodlo:
+      system: CRM
+      tabele: [crm_biura]
+    okno: stan z dnia eksportu CRM, ten sam dla każdego t0
+    opoznienie: nie dotyczy, bo CRM daje tylko bieżący stan, bez historii
+    wlasciciel: Zespół danych
+    wersja: 1.0.0
 
 # Cechy z tabeli agencji, których tu nie ma, i powód (docs/przecieki.md, sekcje 6–7, decyzja 2026-10-12).
 pominiete_cechy_agencji:

@@ -1,5 +1,12 @@
+import type { Metadata } from "next";
+
 import Panel from "./panel/Panel";
 import type { DanePanelu } from "./panel/typy";
+
+export const metadata: Metadata = {
+  title: "Jakość danych przychodu",
+  description: "Nocna kontrola danych przychodu: dostawy, kwarantanna, koszt błędów i most przychodu.",
+};
 
 // Dane zmieniają się co noc: zawsze świeże z API, bez cache.
 export const dynamic = "force-dynamic";

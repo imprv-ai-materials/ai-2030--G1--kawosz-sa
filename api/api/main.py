@@ -1,5 +1,5 @@
-"""Proces API: funkcje Inngest pod /api/inngest (serwer Inngest woła je stąd), dane panelu jakości dla ui/ i cechy
-modelu churnu jednego biura.
+"""Proces API: funkcje Inngest pod /api/inngest (serwer Inngest woła je stąd), dane panelu jakości i katalogu cech
+dla ui/ i cechy modelu churnu jednego biura.
 
     INNGEST_DEV=http://127.0.0.1:8488 PYTHONPATH=api poetry run uvicorn api.main:app --app-dir api --port 8101
 
@@ -14,6 +14,7 @@ import inngest.fast_api
 
 from api.adapters.duckdb_conn import connect
 from api.ai.features import build as cechy_churnu
+from api.ai.features import katalog
 from api.data_platform import panel_jakosci
 from api.data_platform.noc import Ustawienia
 from api.inngest_app import FUNKCJE, client
@@ -29,6 +30,17 @@ def jakosc(dni: int = fastapi.Query(30, ge=1, le=366)) -> dict:
         return panel_jakosci.dane(Ustawienia.z_env().baza, dni)
     except panel_jakosci.BrakDanych as e:
         raise fastapi.HTTPException(status_code=404, detail=str(e)) from e
+    except duckdb.IOException as e:  # nocny potok trzyma bazę do zapisu
+        raise fastapi.HTTPException(
+            status_code=503, detail="Dane są właśnie aktualizowane przez nocny potok. Spróbuj za kilka minut."
+        ) from e
+
+
+@app.get("/api/katalog")
+def katalog_cech() -> dict:
+    """Katalog cech: karty z katalog.yaml, modele wyliczone z wersji i ostatnie PSI z psi_cech."""
+    try:
+        return katalog.dane(Ustawienia.z_env().baza)
     except duckdb.IOException as e:  # nocny potok trzyma bazę do zapisu
         raise fastapi.HTTPException(
             status_code=503, detail="Dane są właśnie aktualizowane przez nocny potok. Spróbuj za kilka minut."

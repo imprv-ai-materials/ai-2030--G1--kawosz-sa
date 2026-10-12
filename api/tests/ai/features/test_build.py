@@ -248,17 +248,6 @@ def test_brak_biur_w_t0_przerywa_i_nie_nadpisuje_cech_aktualnych(con):
     assert con.sql("SELECT count(*) FROM cechy_aktualne").fetchone() == (2,)
 
 
-def test_katalog_opisuje_kazda_ceche_kazdej_rodziny(con):
-    katalog = _katalog()
-
-    assert set(katalog) - {"pominiete_cechy_agencji"} == set(RODZINY)
-    for rodzina in RODZINY:
-        sql = (FEATURES / "sql" / f"{rodzina}.sql").read_text()
-        kolumny = con.execute(sql, {"t0": T0}).df().columns
-        assert list(kolumny) == KLUCZ + list(katalog[rodzina]), rodzina
-        assert all(isinstance(opis, str) and opis.strip() for opis in katalog[rodzina].values()), rodzina
-
-
 def test_brak_cech_z_przeciekiem(con):
     kolumny = set(policz_cechy(con, [T0]).columns)
 
