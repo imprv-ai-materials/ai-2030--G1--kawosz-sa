@@ -1,0 +1,41 @@
+# Katalog cech modelu churnu: rodzina → cecha → opis jednym zdaniem.
+# Rodzina = plik sql/<rodzina>.sql (pełne definicje i okna w komentarzach). Każda cecha jest liczona na początek dnia
+# t0, tylko z rekordów sprzed t0, dla biur z aktywną umową bez wypowiedzenia złożonego przed t0.
+
+umowa:
+  plan: Plan umowy (S, M, L albo XL) z ostatniego zdarzenia umowy sprzed t0.
+  cena_mies: Miesięczna cena umowy z ostatniego zdarzenia sprzed t0, pusta, gdy to zdarzenie jest starsze niż 366 dni.
+  staz_mies: Liczba miesięcy od startu umowy do t0.
+  dni_do_rocznicy: Liczba dni od t0 do najbliższej rocznicy startu umowy, w której umowa się odnawia albo kończy.
+
+uzycie:
+  zaparzenia_30d: Suma zaparzeń ze wszystkich ekspresów biura z 30 ostatnich dni telemetrii dostarczonej przed t0.
+  trend_zaparzen: Zaparzenia z 30 ostatnich znanych dni podzielone przez zaparzenia z 30 dni wcześniejszych.
+  bledy_60d: Suma błędów ze wszystkich ekspresów biura z 60 ostatnich dni telemetrii dostarczonej przed t0.
+
+zamowienia:
+  dni_od_ostatniego_zamowienia: Liczba dni od ostatniej faktury z kawą sprzed t0 do t0.
+
+platnosci:
+  sr_opoznienie_platnosci: Średnia liczba dni po 14-dniowym terminie dla faktur zapłaconych w 90 dniach przed t0.
+
+serwis:
+  awarie_60d: Liczba zgłoszeń awarii w helpdesku z 60 dni przed t0.
+
+relacja:
+  am_id: Identyfikator opiekuna klienta (AM) według stanu CRM z dnia eksportu, bo historii przypisań nie ma.
+  kontakty_am_90d: Liczba kontaktów opiekuna z biurem w 90 dniach przed t0.
+  nps_ostatni: Wynik ostatniej odpowiedzi biura na ankietę NPS sprzed t0.
+
+firmografia:
+  liczba_pracownikow: Liczba pracowników biura według stanu CRM z dnia eksportu, bo historii nie ma.
+  branza: Branża biura według stanu CRM z dnia eksportu.
+  miasto: Miasto biura według stanu CRM z dnia eksportu.
+
+# Cechy z tabeli agencji, których tu nie ma, i powód (docs/przecieki.md, sekcje 6–7, decyzja 2026-10-12).
+pominiete_cechy_agencji:
+  dni_do_konca_umowy: Data końca umowy zmienia się w CRM dopiero przy wypowiedzeniu, więc zastępuje ją dni_do_rocznicy.
+  status_crm: Status z dnia eksportu, a w t0 każde biuro z populacji ma umowę aktywną.
+  zgloszenia_odbior_ekspresu: Odbiór ekspresu biuro zgłasza po wypowiedzeniu, więc przed t0 cecha byłaby zawsze 0.
+  rabat_retencyjny_max: Rabat retencyjny AM daje dopiero po wypowiedzeniu, więc przed t0 cecha byłaby zawsze 0.
+  miasto_te: Kodowanie miasta średnią etykiety liczy model tylko na zbiorze uczącym (kodowanie_celu.py), a nie SQL.
