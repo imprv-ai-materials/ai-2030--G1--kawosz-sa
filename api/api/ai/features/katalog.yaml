@@ -1,10 +1,11 @@
 # Katalog cech modelu churnu: rodzina → cecha → opis jednym zdaniem.
 # Rodzina = plik sql/<rodzina>.sql (pełne definicje i okna w komentarzach). Każda cecha jest liczona na początek dnia
-# t0, tylko z rekordów sprzed t0, dla biur z aktywną umową bez wypowiedzenia złożonego przed t0.
+# t0, tylko z rekordów, które do t0 dotarły (opóźnienia źródeł: docs/opoznienia_danych.md), dla biur z aktywną umową
+# bez wypowiedzenia złożonego przed t0.
 
 umowa:
-  plan: Plan umowy (S, M, L albo XL) z ostatniego zdarzenia umowy sprzed t0.
-  cena_mies: Miesięczna cena umowy z ostatniego zdarzenia sprzed t0, pusta, gdy to zdarzenie jest starsze niż 366 dni.
+  plan: Plan umowy (S, M, L albo XL) z ostatniego zdarzenia umowy znanego w t0.
+  cena_mies: Miesięczna cena z ostatniego znanego zdarzenia umowy, pusta, gdy jest ono starsze niż 366 dni przed t0.
   staz_mies: Liczba miesięcy od startu umowy do t0.
   dni_do_rocznicy: Liczba dni od t0 do najbliższej rocznicy startu umowy, w której umowa się odnawia albo kończy.
 
@@ -14,18 +15,18 @@ uzycie:
   bledy_60d: Suma błędów ze wszystkich ekspresów biura z 60 ostatnich dni telemetrii dostarczonej przed t0.
 
 zamowienia:
-  dni_od_ostatniego_zamowienia: Liczba dni od ostatniej faktury z kawą sprzed t0 do t0.
+  dni_od_ostatniego_zamowienia: Liczba dni od ostatniej faktury z kawą znanej w t0 do t0.
 
 platnosci:
-  sr_opoznienie_platnosci: Średnia liczba dni po 14-dniowym terminie dla faktur zapłaconych w 90 dniach przed t0.
+  sr_opoznienie_platnosci: Średnia liczba dni po 14-dniowym terminie dla płatności z 90 ostatnich dni znanych w t0.
 
 serwis:
-  awarie_60d: Liczba zgłoszeń awarii w helpdesku z 60 dni przed t0.
+  awarie_60d: Liczba zgłoszeń awarii w helpdesku z 60 ostatnich dni znanych w t0.
 
 relacja:
   am_id: Identyfikator opiekuna klienta (AM) według stanu CRM z dnia eksportu, bo historii przypisań nie ma.
-  kontakty_am_90d: Liczba kontaktów opiekuna z biurem w 90 dniach przed t0.
-  nps_ostatni: Wynik ostatniej odpowiedzi biura na ankietę NPS sprzed t0.
+  kontakty_am_90d: Liczba kontaktów opiekuna z biurem z 90 ostatnich dni znanych w t0.
+  nps_ostatni: Wynik ostatniej odpowiedzi biura na ankietę NPS znanej w t0, liczonej od dnia odpowiedzi, a nie wysyłki.
 
 firmografia:
   liczba_pracownikow: Liczba pracowników biura według stanu CRM z dnia eksportu, bo historii nie ma.

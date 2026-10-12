@@ -1,11 +1,13 @@
--- Rodzina „płatności”: terminowość płatności biura w ERP przed dniem t0.
+-- Rodzina „płatności”: terminowość płatności biura w ERP znana w dniu t0.
 -- Parametr $t0 (DATE). Wynik: 1 wiersz na biuro z populacji w t0. Opisy cech: ../katalog.yaml.
 --
--- sr_opoznienie_platnosci: średnio (data płatności − data faktury − 14) dla faktur sprzed t0 zapłaconych w
---   [t0 − 90, t0). 14 dni to mediana czasu zapłaty w ERP; termin nie jest zapisany. Kontrahent przez
+-- Opóźnienie ERP: D+1 (kontrakt erp_faktury, docs/opoznienia_danych.md), więc w t0 znane są faktury i płatności do
+-- znane_do = t0 − 2.
+-- sr_opoznienie_platnosci: średnio (data płatności − data faktury − 14) dla płatności z 90 ostatnich znanych dni,
+--   [znane_do − 89, znane_do]. 14 dni to mediana czasu zapłaty w ERP; termin nie jest zapisany. Kontrahent przez
 --   mapa_kontrahentow, jak w zamowienia.sql. Brak, gdy w oknie nie ma płatności.
 
-WITH p AS (SELECT CAST($t0 AS DATE) AS t0),
+WITH p AS (SELECT CAST($t0 AS DATE) AS t0, CAST($t0 AS DATE) - 2 AS znane_do),
 biura AS (
     -- Populacja w t0, ta sama we wszystkich plikach sql/ i w snapshoty: umowa trwa w t0 i biuro nie złożyło
     -- wypowiedzenia przed t0. data_konca_umowy (stan z eksportu) mówi tu tylko, czy umowa skończyła się przed t0.
@@ -35,15 +37,17 @@ faktury AS (
     WHERE f.typ = 'faktura'
 ),
 platnosci AS (
-    SELECT s.id_biura, avg(p.data_platnosci - f.data - 14) AS sr_opoznienie_platnosci
+    SELECT s.id_biura, avg(pl.data_platnosci - f.data - 14) AS sr_opoznienie_platnosci
     FROM biura s
-    JOIN faktury f ON f.id_biura = s.id_biura AND f.data < s.t0
-    JOIN erp_platnosci p ON p.nr_faktury = f.nr_faktury AND p.data_platnosci >= s.t0 - 90 AND p.data_platnosci < s.t0
+    CROSS JOIN p
+    JOIN faktury f ON f.id_biura = s.id_biura AND f.data <= p.znane_do
+    JOIN erp_platnosci pl
+      ON pl.nr_faktury = f.nr_faktury AND pl.data_platnosci BETWEEN p.znane_do - 89 AND p.znane_do
     GROUP BY s.id_biura
 )
 SELECT
     s.id_biura,
     s.t0,
-    p.sr_opoznienie_platnosci
+    o.sr_opoznienie_platnosci
 FROM biura s
-LEFT JOIN platnosci p USING (id_biura)
+LEFT JOIN platnosci o USING (id_biura)

@@ -1,7 +1,8 @@
 """Tabela cechy_treningowe w kawosz.duckdb: cechy z sql/<rodzina>.sql na każdą datę t0 i etykieta ze snapshoty.
 
 Każdy plik sql/<rodzina>.sql przyjmuje parametr $t0 i zwraca 1 wiersz na biuro z populacji w t0 (umowa trwa, brak
-wypowiedzenia przed t0): id_biura, t0 i cechy rodziny, liczone tylko z rekordów sprzed t0. Opisy cech: katalog.yaml.
+wypowiedzenia przed t0): id_biura, t0 i cechy rodziny, liczone tylko z rekordów, które do t0 dotarły (opóźnienia
+źródeł: docs/opoznienia_danych.md). Opisy cech: katalog.yaml.
 Na produkcji te same pliki liczą cechy na dzisiejsze t0 (policz_cechy), tylko bez etykiety.
 
     PYTHONPATH=api poetry run python -m api.ai.features.build                         # wszystkie daty snapshoty

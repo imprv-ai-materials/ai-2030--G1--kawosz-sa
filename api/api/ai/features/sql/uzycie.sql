@@ -1,8 +1,9 @@
--- Rodzina „użycie”: telemetria ekspresów biura przed dniem t0.
+-- Rodzina „użycie”: telemetria ekspresów biura znana w dniu t0.
 -- Parametr $t0 (DATE). Wynik: 1 wiersz na biuro z populacji w t0. Opisy cech: ../katalog.yaml.
 --
--- Telemetria dociera 2 dni po dniu pomiaru (data_dostarczenia = data + 2), więc w dniu t0 ostatni znany dzień to
--- t0 − 3. Agencja sumowała 30 dni PO snapszocie (docs/przecieki.md, 6.1); tu okna kończą się na t0 − 3:
+-- Telemetria dociera 2 dni po dniu pomiaru (data_dostarczenia = data + 2 we wszystkich wierszach,
+-- docs/opoznienia_danych.md), więc liczą się tylko wiersze z data_dostarczenia < t0, a ostatni znany dzień to t0 − 3.
+-- Agencja sumowała 30 dni PO snapszocie (docs/przecieki.md, 6.1); tu okna kończą się na t0 − 3:
 -- zaparzenia_30d: suma ze wszystkich ekspresów biura z dni [t0 − 32, t0 − 3].
 -- trend_zaparzen: zaparzenia_30d / zaparzenia z dni [t0 − 62, t0 − 33]; brak, gdy mianownik = 0 albo brak telemetrii.
 -- bledy_60d: suma błędów z dni [t0 − 62, t0 − 3].

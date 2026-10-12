@@ -1,11 +1,13 @@
--- Rodzina „zamówienia”: zamówienia kawy biura w ERP przed dniem t0.
+-- Rodzina „zamówienia”: zamówienia kawy biura w ERP znane w dniu t0.
 -- Parametr $t0 (DATE). Wynik: 1 wiersz na biuro z populacji w t0. Opisy cech: ../katalog.yaml.
 --
--- dni_od_ostatniego_zamowienia: t0 − data ostatniej faktury sprzed t0 z pozycją kawy (indeks '10.*'); korekty się
+-- Opóźnienie ERP: D+1 (kontrakt erp_faktury, docs/opoznienia_danych.md), więc w t0 znane są dokumenty do
+-- znane_do = t0 − 2.
+-- dni_od_ostatniego_zamowienia: t0 − data ostatniej znanej faktury z pozycją kawy (indeks '10.*'); korekty się
 --   nie liczą. Agencja liczyła do dnia eksportu, a nie do snapszotu (docs/przecieki.md, 6.1). Kontrahenta łączymy
 --   z biurem przez mapa_kontrahentow, bo to samo biuro bywa w ERP pod kilkoma ID. Brak, gdy nie ma takiej faktury.
 
-WITH p AS (SELECT CAST($t0 AS DATE) AS t0),
+WITH p AS (SELECT CAST($t0 AS DATE) AS t0, CAST($t0 AS DATE) - 2 AS znane_do),
 biura AS (
     -- Populacja w t0, ta sama we wszystkich plikach sql/ i w snapshoty: umowa trwa w t0 i biuro nie złożyło
     -- wypowiedzenia przed t0. data_konca_umowy (stan z eksportu) mówi tu tylko, czy umowa skończyła się przed t0.
@@ -37,8 +39,9 @@ faktury AS (
 zamowienia_kawy AS (
     SELECT s.id_biura, s.t0 - max(f.data) AS dni_od_ostatniego_zamowienia
     FROM biura s
-    JOIN faktury f ON f.id_biura = s.id_biura AND f.data < s.t0
-    WHERE EXISTS (SELECT 1 FROM erp_pozycje p WHERE p.nr_faktury = f.nr_faktury AND p.indeks LIKE '10.%')
+    CROSS JOIN p
+    JOIN faktury f ON f.id_biura = s.id_biura AND f.data <= p.znane_do
+    WHERE EXISTS (SELECT 1 FROM erp_pozycje poz WHERE poz.nr_faktury = f.nr_faktury AND poz.indeks LIKE '10.%')
     GROUP BY s.id_biura, s.t0
 )
 SELECT

@@ -1,6 +1,6 @@
-"""Cechy z sql/<rodzina>.sql na dzień t0 i tabela cechy_treningowe: populacja, brak danych z t0 i później, etykieta."""
+"""Cechy z sql/<rodzina>.sql na dzień t0 i tabela cechy_treningowe: populacja, opóźnienia dostaw, etykieta."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
 import duckdb
@@ -10,11 +10,12 @@ import yaml
 
 from api.ai.features import build
 from api.ai.features.build import KLUCZ, RODZINY, policz_cechy, zbuduj_cechy_treningowe
-from api.ai.features.cechy import cechy_snapszotu
 
 FEATURES = Path(build.__file__).parent
 T0 = date(2025, 4, 1)
 T1 = date(2025, 5, 1)
+# CRM, helpdesk i ERP dostarczają D+1 (docs/opoznienia_danych.md): w T0 znane są zdarzenia do T0 − 2,
+# telemetria dociera z data_dostarczenia = data + 2, więc ostatni znany dzień pomiaru to T0 − 3.
 
 
 def dni(n: int) -> date:
@@ -100,21 +101,25 @@ def _historia_przed_t0(con):
     _faktura(con, "F5", 500, dni(70), ["10.01.0001", "80.01.0002"], zaplata=dni(50))
 
 
-def _historia_od_t0(con):
-    """Rekordy z dnia T0 i późniejsze, we wszystkich źródłach cech: w T0 jeszcze nie istnieją."""
-    con.execute("INSERT INTO crm_umowy_historia VALUES (1, ?, 'downgrade', 'XS', 1)", [T0])
+def _rekordy_nieznane_w_t0(con):
+    """Rekordy, które w T0 jeszcze nie dotarły: z dnia T0 − 1 (dostawa D+1 przychodzi w T0) i późniejsze."""
+    con.execute(
+        "INSERT INTO crm_umowy_historia VALUES (1, ?, 'downgrade', 'XS', 1), (5, ?, 'downgrade', 'S', 2)", [dni(1), T0]
+    )
     # dzień pomiaru w oknie, ale dostarczony z opóźnieniem w T0
     con.execute("INSERT INTO iot_telemetria VALUES ('A', ?, 9999, 9999, ?)", [dni(5), T0])
     _telemetria(con, "A", dni(2), 9999, bledy=9999)  # dostarczony w T0
     _telemetria(con, "A", T0, 9999, bledy=9999)
     con.execute(
-        "INSERT INTO helpdesk_zgloszenia VALUES ('z9', 1, ?, 'awaria'), ('z10', 5, ?, 'awaria')",
-        [T0, T0 + timedelta(days=3)],
+        "INSERT INTO helpdesk_zgloszenia VALUES"
+        " ('z8', 1, ?, 'awaria'), ('z9', 1, ?, 'awaria'), ('z10', 5, ?, 'awaria')",
+        [datetime.combine(dni(1), time(23, 59)), T0, T0 + timedelta(days=3)],
     )
-    con.execute("INSERT INTO crm_kontakty_am VALUES (1, ?, 20), (5, ?, 10)", [T0, T0 + timedelta(days=1)])
-    con.execute("INSERT INTO ankiety_nps VALUES (1, ?, ?, 0)", [dni(10), T0])
-    con.execute("INSERT INTO erp_platnosci VALUES ('F5', ?)", [T0])  # druga płatność starszej faktury
-    _faktura(con, "F9", 100, T0, ["10.01.0001"], zaplata=T0 + timedelta(days=1))
+    con.execute("INSERT INTO crm_kontakty_am VALUES (1, ?, 0), (1, ?, 20), (5, ?, 10)", [dni(1), T0, T0])
+    con.execute("INSERT INTO ankiety_nps VALUES (1, ?, ?, 0), (5, ?, ?, 10)", [dni(10), dni(1), dni(9), T0])
+    con.execute("INSERT INTO erp_platnosci VALUES ('F5', ?)", [dni(1)])  # druga płatność starszej faktury
+    _faktura(con, "F9", 100, dni(1), ["10.01.0001"], zaplata=dni(1))
+    _faktura(con, "F10", 500, T0, ["10.01.0001"], zaplata=T0)
 
 
 def _df(rel: duckdb.DuckDBPyRelation) -> pd.DataFrame:
@@ -136,24 +141,49 @@ def test_rodzina_daje_wiersz_na_biuro_z_aktywna_umowa_w_t0(con, rodzina):
     assert set(pd.to_datetime(df["t0"]).dt.date) == {T0}
 
 
-def test_rekordy_z_dnia_t0_i_pozniej_nie_zmieniaja_cech(con):
+def test_rekordy_ktore_w_t0_nie_dotarly_nie_zmieniaja_cech(con):
     przed = _df(policz_cechy(con, [T0]))
-    _historia_od_t0(con)
+    _rekordy_nieznane_w_t0(con)
     po = _df(policz_cechy(con, [T0]))
 
     pd.testing.assert_frame_equal(po, przed)
     w = przed.set_index("id_biura").loc[1]
     assert (w["plan"], w["awarie_60d"], w["kontakty_am_90d"], w["nps_ostatni"]) == ("S", 1, 1, 8)
-    assert w["dni_od_ostatniego_zamowienia"] == 15
+    assert (w["dni_od_ostatniego_zamowienia"], w["sr_opoznienie_platnosci"]) == (15, -2)
 
 
-def test_zgodne_z_cechami_snapszotu(con):
-    daty = build.daty_snapszotow(con)
+def test_rekordy_z_ostatniego_znanego_dnia_licza_sie(con):
+    con.execute("INSERT INTO crm_umowy_historia VALUES (1, ?, 'downgrade', 'XS', 1)", [dni(2)])
+    con.execute(
+        "INSERT INTO helpdesk_zgloszenia VALUES ('z8', 1, ?, 'awaria')", [datetime.combine(dni(2), time(23, 59))]
+    )
+    con.execute("INSERT INTO crm_kontakty_am VALUES (1, ?, 0)", [dni(2)])
+    con.execute("INSERT INTO ankiety_nps VALUES (1, ?, ?, 0)", [dni(10), dni(2)])
+    _faktura(con, "F8", 100, dni(2), ["10.01.0001"], zaplata=dni(2))
 
-    nowe = _df(policz_cechy(con, daty))
-    stare = cechy_snapszotu(con).rename(columns={"data_snapszotu": "t0"})
+    w = _df(policz_cechy(con, [T0])).set_index("id_biura").loc[1]
 
-    pd.testing.assert_frame_equal(nowe, stare.sort_values(KLUCZ).reset_index(drop=True)[nowe.columns])
+    assert (w["plan"], w["cena_mies"], w["awarie_60d"], w["kontakty_am_90d"], w["nps_ostatni"]) == ("XS", 1, 2, 2, 0)
+    assert w["dni_od_ostatniego_zamowienia"] == 2
+    assert w["sr_opoznienie_platnosci"] == pytest.approx((-2 + -14) / 2)  # F1 zapłacona po 12 dniach, F8 po 0
+
+
+def test_nps_liczy_sie_od_dnia_odpowiedzi_nie_wysylki(con):
+    # wysłana dawno, ale odpowiedź przyszła wczoraj: jeszcze nieznana; wysłana bez odpowiedzi: nic nie zmienia
+    con.execute("INSERT INTO ankiety_nps VALUES (1, ?, ?, 0), (1, ?, NULL, NULL)", [dni(60), dni(1), dni(5)])
+
+    assert _df(policz_cechy(con, [T0])).set_index("id_biura").loc[1, "nps_ostatni"] == 8
+
+
+def test_dwa_zdarzenia_umowy_jednego_dnia_wygrywa_downgrade(con):
+    con.execute(
+        "INSERT INTO crm_umowy_historia VALUES (1, ?, 'odnowienie', 'L', 3000), (1, ?, 'downgrade', 'M', 1200)",
+        [dni(3), dni(3)],
+    )
+
+    w = _df(policz_cechy(con, [T0])).set_index("id_biura").loc[1]
+
+    assert (w["plan"], w["cena_mies"]) == ("M", 1200)
 
 
 def test_cechy_treningowe_maja_etykiete_ze_snapshoty(con):

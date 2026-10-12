@@ -1,11 +1,13 @@
--- Rodzina „serwis”: zgłoszenia biura w helpdesku przed dniem t0.
+-- Rodzina „serwis”: zgłoszenia biura w helpdesku znane w dniu t0.
 -- Parametr $t0 (DATE). Wynik: 1 wiersz na biuro z populacji w t0. Opisy cech: ../katalog.yaml.
 --
--- awarie_60d: zgłoszenia kategorii 'awaria' utworzone w [t0 − 60, t0).
+-- Opóźnienie helpdesku: nieznane, przyjęte D+1 jak w innych nocnych dostawach (docs/opoznienia_danych.md), więc w t0
+-- znane są zgłoszenia do znane_do = t0 − 2.
+-- awarie_60d: zgłoszenia kategorii 'awaria' utworzone w 60 ostatnich znanych dniach, [znane_do − 59, znane_do].
 -- Bez zgloszenia_odbior_ekspresu agencji: odbiór ekspresu biuro zgłasza 1–20 dni po wypowiedzeniu, a liczony
 -- z rekordów sprzed t0 byłby zawsze 0 (docs/przecieki.md, 6.2 i 7).
 
-WITH p AS (SELECT CAST($t0 AS DATE) AS t0),
+WITH p AS (SELECT CAST($t0 AS DATE) AS t0, CAST($t0 AS DATE) - 2 AS znane_do),
 biura AS (
     -- Populacja w t0, ta sama we wszystkich plikach sql/ i w snapshoty: umowa trwa w t0 i biuro nie złożyło
     -- wypowiedzenia przed t0. data_konca_umowy (stan z eksportu) mówi tu tylko, czy umowa skończyła się przed t0.
@@ -21,9 +23,10 @@ biura AS (
 awarie AS (
     SELECT s.id_biura, count(*) AS awarie_60d
     FROM biura s
+    CROSS JOIN p
     JOIN helpdesk_zgloszenia z
       ON z.id_biura = s.id_biura AND z.kategoria = 'awaria'
-     AND CAST(z.utworzono AS DATE) >= s.t0 - 60 AND CAST(z.utworzono AS DATE) < s.t0
+     AND CAST(z.utworzono AS DATE) BETWEEN p.znane_do - 59 AND p.znane_do
     GROUP BY s.id_biura
 )
 SELECT
