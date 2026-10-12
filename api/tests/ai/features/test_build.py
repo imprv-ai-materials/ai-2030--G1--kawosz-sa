@@ -26,6 +26,12 @@ def dni(n: int) -> date:
 @pytest.fixture
 def con():
     con = duckdb.connect()
+    zaloz_baze(con)
+    return con
+
+
+def zaloz_baze(con: duckdb.DuckDBPyConnection) -> None:
+    """Źródła cech z historią do T0 i tabela snapshoty: biura 1 i 5 w populacji w T0, biuro 1 w T1."""
     con.execute("""
         CREATE TABLE crm_biura (
             id_biura BIGINT, miasto VARCHAR, branza VARCHAR, liczba_pracownikow BIGINT, am_id BIGINT,
@@ -71,7 +77,6 @@ def con():
     """)
     con.execute((FEATURES / "snapshoty.sql").read_text())
     _historia_przed_t0(con)
-    return con
 
 
 def _telemetria(con, ekspres: str, dzien: date, zaparzenia: int, bledy: int = 0):

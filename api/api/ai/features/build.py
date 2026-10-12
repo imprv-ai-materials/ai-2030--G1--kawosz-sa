@@ -81,6 +81,15 @@ def policz_cechy(con: duckdb.DuckDBPyConnection, daty_t0: list[date]) -> duckdb.
     return con.sql(_zapytanie_cech(con, daty_t0))
 
 
+def cechy_biura(con: duckdb.DuckDBPyConnection, id_biura: int, t0: date) -> dict | None:
+    """Cechy jednego biura na t0: policz_cechy dla całej populacji w t0, jak w cechy_treningowe i cechy_aktualne,
+    a potem wiersz tego biura. None, gdy biura nie ma w populacji w t0."""
+    rel = con.execute(f"SELECT * FROM ({_zapytanie_cech(con, [t0])}) WHERE id_biura = ?", [id_biura])
+    kolumny = [k[0] for k in rel.description]
+    wiersz = rel.fetchone()
+    return dict(zip(kolumny, wiersz)) if wiersz else None
+
+
 def zbuduj_cechy_treningowe(daty_t0: list[date], con: duckdb.DuckDBPyConnection | None = None) -> int:
     """Liczy cechy na każdą datę t0, dokleja odejdzie_90d ze snapshoty i zapisuje tabelę cechy_treningowe.
 
