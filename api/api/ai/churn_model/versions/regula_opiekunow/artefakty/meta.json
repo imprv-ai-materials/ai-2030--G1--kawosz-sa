@@ -1,0 +1,10 @@
+{
+  "wersja": "regula_opiekunow",
+  "cechy": [
+    "dni_do_konca_okresu",
+    "zaparzenia_30d_iot",
+    "zaparzenia_90d_iot"
+  ],
+  "dni_do_konca": 90,
+  "spadek": 0.3
+}

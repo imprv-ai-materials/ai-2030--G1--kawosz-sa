@@ -34,6 +34,7 @@ pytest-cov = "^7.1.0"
 pyyaml = "^6.0.3"
 pydantic = "^2.14.0"
 lightgbm = "^4.7.0"
+mlflow = "^3.17.0"
 
 [tool.pytest.ini_options]
 pythonpath = ["api"]
@@ -67,6 +68,8 @@ seed_dataset = "api/tests/manual/fake_events.json"
 kawosz_baza = "_symulacja/kawosz.duckdb"
 kawosz_dostawy = "_symulacja/dostawy"
 kawosz_raporty = "_symulacja/kwarantanna"
+# Lokalny serwer MLflow (pypyr start_mlflow); kod modelu churnu loguje pod http://127.0.0.1:5050.
+mlflow_port = "5050"
 
 [tool.pypyr.shortcuts]
 install = { pipeline_name = "dev/install" }
@@ -97,6 +100,8 @@ dane = { pipeline_name = "dev/dane" }
 symulacja = { pipeline_name = "dev/symulacja" }
 noc = { pipeline_name = "dev/noc" }
 start_inngest = { pipeline_name = "dev/start_inngest" }
+# Model churnu: lokalny MLflow (eksperyment churn)
+start_mlflow = { pipeline_name = "dev/start_mlflow" }
 
 [tool.poetry]
 package-mode = false

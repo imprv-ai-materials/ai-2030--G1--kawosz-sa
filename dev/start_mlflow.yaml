@@ -1,0 +1,20 @@
+# Lokalny serwer MLflow (eksperymenty modelu churnu) na http://127.0.0.1:5050. Port 5000 na macOS zajmuje AirPlay.
+# Dane w dev/mlflow/ (w .gitignore): baza SQLite mlflow.db i katalog artefakty/. Ctrl+C zatrzymuje serwer.
+#   poetry run pypyr start_mlflow
+context_parser: pypyr.parser.keyvaluepairs
+steps:
+  - pypyr.steps.debug
+  - pypyr.steps.configvars
+
+  - name: pypyr.steps.cmd
+    description: Katalog na bazę i artefakty MLflow
+    in:
+      cmd: mkdir -p dev/mlflow/artefakty
+
+  - name: pypyr.steps.cmd
+    description: MLflow tracking server on :{mlflow_port}
+    in:
+      cmd: >-
+        poetry run mlflow server --host 127.0.0.1 --port {mlflow_port}
+        --backend-store-uri sqlite:///dev/mlflow/mlflow.db
+        --artifacts-destination ./dev/mlflow/artefakty

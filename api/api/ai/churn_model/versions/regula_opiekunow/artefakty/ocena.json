@@ -1,0 +1,11 @@
+{
+  "wersja": "regula_opiekunow",
+  "sposob_oceny": "losowy podział wierszy 80/20, stratyfikowany, random_state=42; ocena tylko na części testowej, reguła się nie uczy",
+  "wiersze_testowe": 2470,
+  "jedynki_testowe": 87,
+  "auc": 0.7028,
+  "oznaczone": 84,
+  "trafione": 37,
+  "precyzja": 0.4405,
+  "czulosc": 0.4253
+}

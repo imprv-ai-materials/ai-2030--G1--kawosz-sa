@@ -13,7 +13,7 @@ To nie jest jednak miara jakości prognozy: 95,5% ważności daje jedna cecha, k
 | Cechy | 20 kolumn agencji bez zmian; `status_crm`, `plan`, `branza`, `miasto` jako kategoryczne |
 | Podział | losowy po wierszach 80/20, stratyfikowany, `random_state=42`: 9 876 uczących, 2 470 testowych |
 | Model | `LGBMClassifier` z domyślnymi parametrami, `random_state=42` |
-| Kod | `versions/v0_agencja/` (`model.py`, `trenuj.py`); model i `ocena.json` w `versions/v0_agencja/artefakty/` |
+| Kod | dane i podział: `zbior_agencji.py`; model: `versions/v0_agencja/` (`model.py`, `trenuj.py`); model i `ocena.json` w `versions/v0_agencja/artefakty/` |
 
 ```bash
 PYTHONPATH=api poetry run python -m api.ai.churn_model.versions.v0_agencja.trenuj

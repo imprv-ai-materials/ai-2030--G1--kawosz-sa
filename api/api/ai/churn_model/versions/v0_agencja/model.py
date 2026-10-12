@@ -1,6 +1,7 @@
 """v0_agencja: odtworzenie modelu agencji. LightGBM z domyślnymi parametrami na gotowej tabeli agencja_features.
 
-Cechy bierzemy bez zmian, łącznie z tymi, które przeciekają z przyszłości (evals/v0_agencja.md). Ta wersja jest punktem odniesienia, a nie modelem do użycia.
+Cechy bierzemy bez zmian, łącznie z tymi, które przeciekają z przyszłości (evals/v0_agencja.md). Ta wersja
+odtwarza wynik agencji i nie jest modelem do użycia.
 """
 
 import json
@@ -35,6 +36,7 @@ CECHY = [
     "nps_ostatni",
 ]
 ZIARNO = 42
+PARAMETRY = {"random_state": ZIARNO, "verbose": -1}  # poza tym domyślne LightGBM, jak u agencji
 
 
 class ModelAgencji(ChurnModel):
@@ -51,7 +53,7 @@ class ModelAgencji(ChurnModel):
         return X
 
     def fit(self, X: pd.DataFrame, y: pd.Series) -> "ModelAgencji":
-        klasyfikator = lgb.LGBMClassifier(random_state=ZIARNO, verbose=-1)
+        klasyfikator = lgb.LGBMClassifier(**PARAMETRY)
         self.booster = klasyfikator.fit(self._przygotuj(X), y).booster_
         return self
 

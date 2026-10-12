@@ -29,3 +29,5 @@ _staging/
 _dostawy/
 # Symulacja nocnego potoku (api/api/data_platform/symulacja.py)
 _symulacja/
+# Lokalny MLflow (pypyr start_mlflow): baza SQLite i artefakty runów
+dev/mlflow/
