@@ -1,0 +1,8 @@
+# Aktywna wersja modelu churnu: nazwa folderu w versions/ (= run w MLflow, eksperyment churn).
+# Historia zmian i wyniki: evals/porownanie.md.
+wersja: v4_skalibrowany
+poprzednia: v3_katalog
+powod: >-
+  v3_katalog przeszacowuje ryzyko średnio 3 razy (class_weight="balanced"), więc jej wyniku nie da się użyć jako p
+  w p × s × V − C. v4 to Pipeline v3 z kalibracją Platta: Brier na teście 0,0304 (v3: 0,0519, stała 3,5%: 0,0342),
+  AUC 0,789 (v3: 0,783). evals/kalibracja.md

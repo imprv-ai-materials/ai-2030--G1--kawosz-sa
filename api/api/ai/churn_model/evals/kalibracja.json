@@ -1,0 +1,714 @@
+{
+  "wersja": "v3_katalog",
+  "model": "artefakty/model.joblib v3_katalog, bez ponownego uczenia",
+  "prog": {
+    "snapszot": "2026-04-01",
+    "prog": 0.5,
+    "biura": 1401,
+    "odejscia": 49,
+    "wybrane": 84,
+    "wybrane_odeszly": 20,
+    "precyzja": 0.2381,
+    "czulosc": 0.4082,
+    "srednie_p_wybranych": 0.7142,
+    "suma_p": 161.2,
+    "po_snapszotach_testu": [
+      {
+        "t0": "2025-10-01",
+        "biura": 1387,
+        "odejscia": 50,
+        "wybrane": 82,
+        "wybrane_odeszly": 22
+      },
+      {
+        "t0": "2025-11-01",
+        "biura": 1389,
+        "odejscia": 50,
+        "wybrane": 82,
+        "wybrane_odeszly": 22
+      },
+      {
+        "t0": "2025-12-01",
+        "biura": 1403,
+        "odejscia": 54,
+        "wybrane": 88,
+        "wybrane_odeszly": 21
+      },
+      {
+        "t0": "2026-01-01",
+        "biura": 1393,
+        "odejscia": 49,
+        "wybrane": 93,
+        "wybrane_odeszly": 20
+      },
+      {
+        "t0": "2026-02-01",
+        "biura": 1399,
+        "odejscia": 48,
+        "wybrane": 82,
+        "wybrane_odeszly": 21
+      },
+      {
+        "t0": "2026-03-01",
+        "biura": 1397,
+        "odejscia": 46,
+        "wybrane": 62,
+        "wybrane_odeszly": 17
+      },
+      {
+        "t0": "2026-04-01",
+        "biura": 1401,
+        "odejscia": 49,
+        "wybrane": 84,
+        "wybrane_odeszly": 20
+      }
+    ]
+  },
+  "kalibracja": {
+    "test": "t0 2025-10 – 2026-04, 9769 wierszy, 346 odejść",
+    "auc": 0.7834,
+    "brier": 0.0519,
+    "brier_stala_stopa": 0.0342,
+    "srednie_p": 0.1114,
+    "odsetek_odejsc": 0.0354,
+    "przedzialy": [
+      {
+        "przedzial": "0.0–0.1",
+        "wiersze": 7122,
+        "srednie_p": 0.0299,
+        "odejscia": 107,
+        "odsetek_odejsc": 0.015,
+        "dol_95": 0.0124,
+        "gora_95": 0.0181
+      },
+      {
+        "przedzial": "0.1–0.2",
+        "wiersze": 1119,
+        "srednie_p": 0.1411,
+        "odejscia": 43,
+        "odsetek_odejsc": 0.0384,
+        "dol_95": 0.0287,
+        "gora_95": 0.0514
+      },
+      {
+        "przedzial": "0.2–0.3",
+        "wiersze": 489,
+        "srednie_p": 0.2442,
+        "odejscia": 19,
+        "odsetek_odejsc": 0.0389,
+        "dol_95": 0.025,
+        "gora_95": 0.0599
+      },
+      {
+        "przedzial": "0.3–0.4",
+        "wiersze": 265,
+        "srednie_p": 0.35,
+        "odejscia": 15,
+        "odsetek_odejsc": 0.0566,
+        "dol_95": 0.0346,
+        "gora_95": 0.0913
+      },
+      {
+        "przedzial": "0.4–0.5",
+        "wiersze": 201,
+        "srednie_p": 0.4506,
+        "odejscia": 19,
+        "odsetek_odejsc": 0.0945,
+        "dol_95": 0.0614,
+        "gora_95": 0.1429
+      },
+      {
+        "przedzial": "0.5–0.6",
+        "wiersze": 158,
+        "srednie_p": 0.548,
+        "odejscia": 19,
+        "odsetek_odejsc": 0.1203,
+        "dol_95": 0.0784,
+        "gora_95": 0.1802
+      },
+      {
+        "przedzial": "0.6–0.7",
+        "wiersze": 114,
+        "srednie_p": 0.6477,
+        "odejscia": 15,
+        "odsetek_odejsc": 0.1316,
+        "dol_95": 0.0814,
+        "gora_95": 0.2058
+      },
+      {
+        "przedzial": "0.7–0.8",
+        "wiersze": 97,
+        "srednie_p": 0.7518,
+        "odejscia": 22,
+        "odsetek_odejsc": 0.2268,
+        "dol_95": 0.1548,
+        "gora_95": 0.3196
+      },
+      {
+        "przedzial": "0.8–0.9",
+        "wiersze": 109,
+        "srednie_p": 0.8492,
+        "odejscia": 41,
+        "odsetek_odejsc": 0.3761,
+        "dol_95": 0.2909,
+        "gora_95": 0.4698
+      },
+      {
+        "przedzial": "0.9–1.0",
+        "wiersze": 95,
+        "srednie_p": 0.9342,
+        "odejscia": 46,
+        "odsetek_odejsc": 0.4842,
+        "dol_95": 0.3863,
+        "gora_95": 0.5833
+      }
+    ]
+  },
+  "uczenie_odsetek_odejsc": 0.0357,
+  "kalibracja_platt_izotoniczna": {
+    "model_bazowy": "Pipeline v3 (zbuduj_pipeline, class_weight=balanced) uczony od nowa na t0 z oknem etykiety przed walidacją",
+    "uczenie_bazowego": {
+      "snapszoty": "2024-04 – 2025-01",
+      "wiersze": 13573,
+      "jedynki": 483
+    },
+    "walidacja": {
+      "snapszoty": "2025-05 – 2025-07",
+      "wiersze": 4141,
+      "jedynki": 162
+    },
+    "test": {
+      "snapszoty": "2025-10 – 2026-04",
+      "wiersze": 9769,
+      "jedynki": 346
+    },
+    "kalibrator": "CalibratedClassifierCV(FrozenEstimator(bazowy), method=sigmoid | isotonic)",
+    "prog_oplacalnosci": 0.1736,
+    "stala_stopa_z_walidacji": {
+      "p": 0.0391,
+      "brier": 0.0342,
+      "log_loss": 0.1533
+    },
+    "odejscia_walidacji": {
+      "wiersze": 4141,
+      "biura": 1414,
+      "wiersze_z_odejsciem": 162,
+      "biura_z_odejsciem": 87,
+      "po_miesiacach": {
+        "2025-05": 54,
+        "2025-06": 58,
+        "2025-07": 50
+      },
+      "biura_wg_liczby_wierszy_z_odejsciem": {
+        "1": 29,
+        "2": 41,
+        "3": 17
+      }
+    },
+    "brier_test": {
+      "brier": {
+        "stala_3_5": 0.03416,
+        "przed": 0.04244,
+        "platt": 0.03037,
+        "izotoniczna": 0.03068
+      },
+      "roznice_95": {
+        "platt − izotoniczna": {
+          "roznica": -0.00031,
+          "przedzial": [
+            -0.00086,
+            0.00015
+          ],
+          "udzial_ponizej_zera": 0.894
+        },
+        "platt − stala_3_5": {
+          "roznica": -0.00379,
+          "przedzial": [
+            -0.00538,
+            -0.00232
+          ],
+          "udzial_ponizej_zera": 1.0
+        },
+        "izotoniczna − stala_3_5": {
+          "roznica": -0.00349,
+          "przedzial": [
+            -0.00527,
+            -0.00178
+          ],
+          "udzial_ponizej_zera": 1.0
+        }
+      },
+      "bootstrap": "1000 losowań biur testu ze zwracaniem, ziarno 42"
+    },
+    "izotoniczna_schodki": {
+      "progi_kalibratora": 36,
+      "rozne_wyniki_na_tescie": 62
+    },
+    "stabilnosc": {
+      "opis": "200 losowań biur walidacji ze zwracaniem, ziarno 42; Brier na teście",
+      "platt": {
+        "brier_mediana": 0.03043,
+        "brier_95": [
+          0.03017,
+          0.03108
+        ],
+        "brier_najgorszy": 0.0316,
+        "gorszy_niz_stala": 0.0,
+        "max_p_mediana": 0.5575,
+        "udzial_z_p_1": 0.0
+      },
+      "izotoniczna": {
+        "brier_mediana": 0.03085,
+        "brier_95": [
+          0.03034,
+          0.03152
+        ],
+        "brier_najgorszy": 0.03189,
+        "gorszy_niz_stala": 0.0,
+        "max_p_mediana": 1.0,
+        "udzial_z_p_1": 0.98
+      },
+      "platt_lepszy_od_izotonicznej": 0.825
+    },
+    "v3_katalog_artefakt": {
+      "auc": 0.7834,
+      "brier": 0.0519,
+      "log_loss": 0.1919,
+      "srednie_p": 0.1114,
+      "max_p": 0.9795,
+      "suma_p_snapszot": 161.2,
+      "prog_0_5": {
+        "prog": 0.5,
+        "wybrane": 84,
+        "wybrane_odeszly": 20
+      },
+      "prog_oplacalnosci": {
+        "prog": 0.1736,
+        "wybrane": 267,
+        "wybrane_odeszly": 30
+      },
+      "przedzialy": [
+        {
+          "przedzial": "0.0–0.1",
+          "wiersze": 7122,
+          "srednie_p": 0.0299,
+          "odejscia": 107,
+          "odsetek_odejsc": 0.015,
+          "dol_95": 0.0124,
+          "gora_95": 0.0181
+        },
+        {
+          "przedzial": "0.1–0.2",
+          "wiersze": 1119,
+          "srednie_p": 0.1411,
+          "odejscia": 43,
+          "odsetek_odejsc": 0.0384,
+          "dol_95": 0.0287,
+          "gora_95": 0.0514
+        },
+        {
+          "przedzial": "0.2–0.3",
+          "wiersze": 489,
+          "srednie_p": 0.2442,
+          "odejscia": 19,
+          "odsetek_odejsc": 0.0389,
+          "dol_95": 0.025,
+          "gora_95": 0.0599
+        },
+        {
+          "przedzial": "0.3–0.4",
+          "wiersze": 265,
+          "srednie_p": 0.35,
+          "odejscia": 15,
+          "odsetek_odejsc": 0.0566,
+          "dol_95": 0.0346,
+          "gora_95": 0.0913
+        },
+        {
+          "przedzial": "0.4–0.5",
+          "wiersze": 201,
+          "srednie_p": 0.4506,
+          "odejscia": 19,
+          "odsetek_odejsc": 0.0945,
+          "dol_95": 0.0614,
+          "gora_95": 0.1429
+        },
+        {
+          "przedzial": "0.5–0.6",
+          "wiersze": 158,
+          "srednie_p": 0.548,
+          "odejscia": 19,
+          "odsetek_odejsc": 0.1203,
+          "dol_95": 0.0784,
+          "gora_95": 0.1802
+        },
+        {
+          "przedzial": "0.6–0.7",
+          "wiersze": 114,
+          "srednie_p": 0.6477,
+          "odejscia": 15,
+          "odsetek_odejsc": 0.1316,
+          "dol_95": 0.0814,
+          "gora_95": 0.2058
+        },
+        {
+          "przedzial": "0.7–0.8",
+          "wiersze": 97,
+          "srednie_p": 0.7518,
+          "odejscia": 22,
+          "odsetek_odejsc": 0.2268,
+          "dol_95": 0.1548,
+          "gora_95": 0.3196
+        },
+        {
+          "przedzial": "0.8–0.9",
+          "wiersze": 109,
+          "srednie_p": 0.8492,
+          "odejscia": 41,
+          "odsetek_odejsc": 0.3761,
+          "dol_95": 0.2909,
+          "gora_95": 0.4698
+        },
+        {
+          "przedzial": "0.9–1.0",
+          "wiersze": 95,
+          "srednie_p": 0.9342,
+          "odejscia": 46,
+          "odsetek_odejsc": 0.4842,
+          "dol_95": 0.3863,
+          "gora_95": 0.5833
+        }
+      ]
+    },
+    "przed": {
+      "auc": 0.789,
+      "brier": 0.0424,
+      "log_loss": 0.1648,
+      "srednie_p": 0.0737,
+      "max_p": 0.9899,
+      "suma_p_snapszot": 101.5,
+      "prog_0_5": {
+        "prog": 0.5,
+        "wybrane": 49,
+        "wybrane_odeszly": 21
+      },
+      "prog_oplacalnosci": {
+        "prog": 0.1736,
+        "wybrane": 167,
+        "wybrane_odeszly": 25
+      },
+      "przedzialy": [
+        {
+          "przedzial": "0.0–0.1",
+          "wiersze": 8171,
+          "srednie_p": 0.0183,
+          "odejscia": 149,
+          "odsetek_odejsc": 0.0182,
+          "dol_95": 0.0156,
+          "gora_95": 0.0214
+        },
+        {
+          "przedzial": "0.1–0.2",
+          "wiersze": 621,
+          "srednie_p": 0.141,
+          "odejscia": 28,
+          "odsetek_odejsc": 0.0451,
+          "dol_95": 0.0314,
+          "gora_95": 0.0644
+        },
+        {
+          "przedzial": "0.2–0.3",
+          "wiersze": 279,
+          "srednie_p": 0.2433,
+          "odejscia": 17,
+          "odsetek_odejsc": 0.0609,
+          "dol_95": 0.0384,
+          "gora_95": 0.0954
+        },
+        {
+          "przedzial": "0.3–0.4",
+          "wiersze": 189,
+          "srednie_p": 0.3438,
+          "odejscia": 12,
+          "odsetek_odejsc": 0.0635,
+          "dol_95": 0.0367,
+          "gora_95": 0.1077
+        },
+        {
+          "przedzial": "0.4–0.5",
+          "wiersze": 110,
+          "srednie_p": 0.4501,
+          "odejscia": 15,
+          "odsetek_odejsc": 0.1364,
+          "dol_95": 0.0844,
+          "gora_95": 0.2129
+        },
+        {
+          "przedzial": "0.5–0.6",
+          "wiersze": 84,
+          "srednie_p": 0.5471,
+          "odejscia": 16,
+          "odsetek_odejsc": 0.1905,
+          "dol_95": 0.1208,
+          "gora_95": 0.2872
+        },
+        {
+          "przedzial": "0.6–0.7",
+          "wiersze": 83,
+          "srednie_p": 0.6453,
+          "odejscia": 22,
+          "odsetek_odejsc": 0.2651,
+          "dol_95": 0.182,
+          "gora_95": 0.3689
+        },
+        {
+          "przedzial": "0.7–0.8",
+          "wiersze": 57,
+          "srednie_p": 0.7526,
+          "odejscia": 11,
+          "odsetek_odejsc": 0.193,
+          "dol_95": 0.1113,
+          "gora_95": 0.3134
+        },
+        {
+          "przedzial": "0.8–0.9",
+          "wiersze": 83,
+          "srednie_p": 0.852,
+          "odejscia": 30,
+          "odsetek_odejsc": 0.3614,
+          "dol_95": 0.2663,
+          "gora_95": 0.4688
+        },
+        {
+          "przedzial": "0.9–1.0",
+          "wiersze": 92,
+          "srednie_p": 0.9445,
+          "odejscia": 46,
+          "odsetek_odejsc": 0.5,
+          "dol_95": 0.3999,
+          "gora_95": 0.6001
+        }
+      ]
+    },
+    "platt": {
+      "auc": 0.789,
+      "brier": 0.0304,
+      "log_loss": 0.1273,
+      "srednie_p": 0.0396,
+      "max_p": 0.5569,
+      "suma_p_snapszot": 54.0,
+      "prog_0_5": {
+        "prog": 0.5,
+        "wybrane": 0,
+        "wybrane_odeszly": 0
+      },
+      "prog_oplacalnosci": {
+        "prog": 0.1736,
+        "wybrane": 33,
+        "wybrane_odeszly": 17
+      },
+      "przedzialy": [
+        {
+          "przedzial": "0.0–0.1",
+          "wiersze": 9063,
+          "srednie_p": 0.028,
+          "odejscia": 194,
+          "odsetek_odejsc": 0.0214,
+          "dol_95": 0.0186,
+          "gora_95": 0.0246
+        },
+        {
+          "przedzial": "0.1–0.2",
+          "wiersze": 484,
+          "srednie_p": 0.135,
+          "odejscia": 68,
+          "odsetek_odejsc": 0.1405,
+          "dol_95": 0.1124,
+          "gora_95": 0.1743
+        },
+        {
+          "przedzial": "0.2–0.3",
+          "wiersze": 126,
+          "srednie_p": 0.246,
+          "odejscia": 35,
+          "odsetek_odejsc": 0.2778,
+          "dol_95": 0.207,
+          "gora_95": 0.3617
+        },
+        {
+          "przedzial": "0.3–0.4",
+          "wiersze": 66,
+          "srednie_p": 0.3438,
+          "odejscia": 34,
+          "odsetek_odejsc": 0.5152,
+          "dol_95": 0.3971,
+          "gora_95": 0.6315
+        },
+        {
+          "przedzial": "0.4–0.5",
+          "wiersze": 28,
+          "srednie_p": 0.4423,
+          "odejscia": 13,
+          "odsetek_odejsc": 0.4643,
+          "dol_95": 0.2953,
+          "gora_95": 0.6419
+        },
+        {
+          "przedzial": "0.5–0.6",
+          "wiersze": 2,
+          "srednie_p": 0.5301,
+          "odejscia": 2,
+          "odsetek_odejsc": 1.0,
+          "dol_95": 0.3424,
+          "gora_95": 1.0
+        },
+        {
+          "przedzial": "0.6–0.7",
+          "wiersze": 0,
+          "srednie_p": null,
+          "odejscia": 0,
+          "odsetek_odejsc": null,
+          "dol_95": null,
+          "gora_95": null
+        },
+        {
+          "przedzial": "0.7–0.8",
+          "wiersze": 0,
+          "srednie_p": null,
+          "odejscia": 0,
+          "odsetek_odejsc": null,
+          "dol_95": null,
+          "gora_95": null
+        },
+        {
+          "przedzial": "0.8–0.9",
+          "wiersze": 0,
+          "srednie_p": null,
+          "odejscia": 0,
+          "odsetek_odejsc": null,
+          "dol_95": null,
+          "gora_95": null
+        },
+        {
+          "przedzial": "0.9–1.0",
+          "wiersze": 0,
+          "srednie_p": null,
+          "odejscia": 0,
+          "odsetek_odejsc": null,
+          "dol_95": null,
+          "gora_95": null
+        }
+      ]
+    },
+    "izotoniczna": {
+      "auc": 0.7761,
+      "brier": 0.0307,
+      "log_loss": 0.1414,
+      "srednie_p": 0.0397,
+      "max_p": 1.0,
+      "suma_p_snapszot": 52.9,
+      "prog_0_5": {
+        "prog": 0.5,
+        "wybrane": 0,
+        "wybrane_odeszly": 0
+      },
+      "prog_oplacalnosci": {
+        "prog": 0.1736,
+        "wybrane": 56,
+        "wybrane_odeszly": 21
+      },
+      "przedzialy": [
+        {
+          "przedzial": "0.0–0.1",
+          "wiersze": 9065,
+          "srednie_p": 0.0259,
+          "odejscia": 194,
+          "odsetek_odejsc": 0.0214,
+          "dol_95": 0.0186,
+          "gora_95": 0.0246
+        },
+        {
+          "przedzial": "0.1–0.2",
+          "wiersze": 419,
+          "srednie_p": 0.1476,
+          "odejscia": 51,
+          "odsetek_odejsc": 0.1217,
+          "dol_95": 0.0938,
+          "gora_95": 0.1565
+        },
+        {
+          "przedzial": "0.2–0.3",
+          "wiersze": 257,
+          "srednie_p": 0.2727,
+          "odejscia": 86,
+          "odsetek_odejsc": 0.3346,
+          "dol_95": 0.2798,
+          "gora_95": 0.3944
+        },
+        {
+          "przedzial": "0.3–0.4",
+          "wiersze": 5,
+          "srednie_p": 0.3485,
+          "odejscia": 4,
+          "odsetek_odejsc": 0.8,
+          "dol_95": 0.3755,
+          "gora_95": 0.9638
+        },
+        {
+          "przedzial": "0.4–0.5",
+          "wiersze": 3,
+          "srednie_p": 0.4615,
+          "odejscia": 1,
+          "odsetek_odejsc": 0.3333,
+          "dol_95": 0.0615,
+          "gora_95": 0.7923
+        },
+        {
+          "przedzial": "0.5–0.6",
+          "wiersze": 0,
+          "srednie_p": null,
+          "odejscia": 0,
+          "odsetek_odejsc": null,
+          "dol_95": null,
+          "gora_95": null
+        },
+        {
+          "przedzial": "0.6–0.7",
+          "wiersze": 1,
+          "srednie_p": 0.612,
+          "odejscia": 0,
+          "odsetek_odejsc": 0.0,
+          "dol_95": 0.0,
+          "gora_95": 0.7935
+        },
+        {
+          "przedzial": "0.7–0.8",
+          "wiersze": 0,
+          "srednie_p": null,
+          "odejscia": 0,
+          "odsetek_odejsc": null,
+          "dol_95": null,
+          "gora_95": null
+        },
+        {
+          "przedzial": "0.8–0.9",
+          "wiersze": 11,
+          "srednie_p": 0.8,
+          "odejscia": 3,
+          "odsetek_odejsc": 0.2727,
+          "dol_95": 0.0975,
+          "gora_95": 0.5657
+        },
+        {
+          "przedzial": "0.9–1.0",
+          "wiersze": 8,
+          "srednie_p": 1.0,
+          "odejscia": 7,
+          "odsetek_odejsc": 0.875,
+          "dol_95": 0.5291,
+          "gora_95": 0.9776
+        }
+      ]
+    }
+  }
+}

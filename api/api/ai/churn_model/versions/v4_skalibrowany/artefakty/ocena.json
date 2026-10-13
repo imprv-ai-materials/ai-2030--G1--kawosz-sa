@@ -1,0 +1,67 @@
+{
+  "wersja": "v4_skalibrowany",
+  "sposob_oceny": "podział w czasie jak w v3: test na t0 2025-10 – 2026-04, wszystkie miesięczne wiersze cechy_treningowe; model bazowy uczony na t0 2024-04 – 2025-01, kalibracja Platta na t0 2025-05 – 2025-07",
+  "auc": 0.789,
+  "auc_95": [
+    0.7473,
+    0.8283
+  ],
+  "auc_przed_kalibracja": 0.789,
+  "kolejnosc_przed_i_po_kalibracji": {
+    "wiersze": 9769,
+    "wiersze_ze_zmieniona_ranga": 0,
+    "rozne_wyniki_przed": 9747,
+    "rozne_wyniki_po": 9747,
+    "spearman": 1.0
+  },
+  "brier": {
+    "v4_skalibrowany": 0.03037,
+    "bazowy_przed_kalibracja": 0.04244,
+    "v3_katalog": 0.05192,
+    "stala_3_5": 0.03416
+  },
+  "log_loss": 0.1273,
+  "srednie_p": 0.0396,
+  "odsetek_odejsc": 0.0354,
+  "max_p": 0.5569,
+  "kalibracja_platt": {
+    "a": -0.4436536064019631,
+    "b": 1.8061548063989634
+  },
+  "okresy": {
+    "bazowy": {
+      "snapszoty": "2024-04 – 2025-01",
+      "wiersze": 13573,
+      "jedynki": 483
+    },
+    "walidacja": {
+      "snapszoty": "2025-05 – 2025-07",
+      "wiersze": 4141,
+      "jedynki": 162
+    }
+  },
+  "test": {
+    "snapszoty": "2025-10 – 2026-04",
+    "wiersze": 9769,
+    "jedynki": 346
+  },
+  "waznosc_gain": {
+    "dni_do_rocznicy": 0.2261,
+    "trend_zaparzen": 0.1484,
+    "branza": 0.1122,
+    "zaparzenia_30d": 0.0918,
+    "cena_mies": 0.0836,
+    "liczba_pracownikow": 0.0777,
+    "miasto": 0.0612,
+    "staz_mies": 0.0607,
+    "sr_opoznienie_platnosci": 0.0479,
+    "nps_ostatni": 0.031,
+    "bledy_60d": 0.0193,
+    "dni_od_ostatniego_zamowienia": 0.0147,
+    "plan": 0.011,
+    "am_id": 0.0103,
+    "kontakty_am_90d": 0.0029,
+    "awarie_60d": 0.0011
+  },
+  "bootstrap": "1000 losowań biur ze zwracaniem, ziarno 42"
+}

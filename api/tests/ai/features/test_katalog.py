@@ -77,10 +77,10 @@ def test_modele_cechy_to_wersje_z_katalogu_a_nie_te_o_tych_samych_nazwach_cech()
     modele = katalog.modele_cech(karty, list(wersje.values()))
 
     meta_v3 = json.loads((katalog.WERSJE_MODELI / "v3_katalog" / "artefakty" / "meta.json").read_text())
-    assert all(modele[c] == ["v3_katalog"] for c in meta_v3["cechy"])
+    assert all(modele[c] == ["v3_katalog", "v4_skalibrowany"] for c in meta_v3["cechy"])
     # v2 ma te same nazwy cech, ale liczy je cechy_snapszotu.sql, więc nie jest modelem tych kart
     assert set(wersje["v2_bez_przeciekow"]["cechy"]) & {k.cecha for k in karty}
-    assert {w for w, d in wersje.items() if d["z_katalogu"]} == {"v3_katalog"}
+    assert {w for w, d in wersje.items() if d["z_katalogu"]} == {"v3_katalog", "v4_skalibrowany"}
 
 
 @pytest.mark.parametrize(
@@ -139,7 +139,7 @@ def test_api_katalogu_daje_karty_z_modelami_i_ostatnim_psi(tmp_path, klient, mon
     karty = {k["cecha"]: k for k in dane["karty"]}
     assert list(karty) == [c for r in RODZINY for c in yaml.safe_load(katalog.PLIK.read_text())[r]]
     assert karty["plan"]["psi"] == {"t0": "2026-09-28", "psi": 0.3, "alert": True, "alerty": 1, "tygodnie": 2}
-    assert karty["miasto"]["psi"] is None and karty["plan"]["modele"] == ["v3_katalog"]
+    assert karty["miasto"]["psi"] is None and karty["plan"]["modele"] == ["v3_katalog", "v4_skalibrowany"]
     assert dane["psi_t0"] == "2026-09-28" and dane["psi_prog"] == psi_cech.PROG
     assert {k: karty["plan"][k] for k in ("sql", "system", "tabele", "wlasciciel", "wersja")} == {
         "sql": "sql/umowa.sql", "system": "CRM", "tabele": ["crm_umowy_historia"], "wlasciciel": "Zespół danych",
