@@ -1,0 +1,1563 @@
+{
+  "snapszot": "2026-04-01",
+  "model": "v4_skalibrowany",
+  "biura": 1401,
+  "odejscia": 49,
+  "max_p": 0.4201,
+  "zalozenia": {
+    "s": 0.3,
+    "V": 24192,
+    "C": 1260,
+    "budzet_wizyt": 60,
+    "zysk_trafionej": 5997.599999999999,
+    "prog_oplacalnosci": 0.17361111111111113
+  },
+  "najlepszy_prog": {
+    "prog": 0.15,
+    "wizyty": 46,
+    "trafione": 21,
+    "zbedne": 25,
+    "zysk": 94449.59999999999,
+    "zysk_oczekiwany": 22645.13355265184,
+    "zysk_5": 48973,
+    "zysk_95": 137995
+  },
+  "najlepszy_prog_w_budzecie": {
+    "prog": 0.15,
+    "wizyty": 46,
+    "trafione": 21,
+    "zbedne": 25,
+    "zysk": 94449.59999999999,
+    "zysk_oczekiwany": 22645.13355265184,
+    "zysk_5": 48973,
+    "zysk_95": 137995
+  },
+  "najlepszy_prog_oczekiwany": {
+    "prog": 0.18,
+    "wizyty": 32,
+    "trafione": 17,
+    "zbedne": 15,
+    "zysk": 83059.2,
+    "zysk_oczekiwany": 23518.673595720702,
+    "zysk_5": 42033,
+    "zysk_95": 122872
+  },
+  "top": {
+    "n": 60,
+    "prog_p": 0.12702246155000194,
+    "wizyty": 60,
+    "trafione": 21,
+    "zbedne": 39,
+    "zysk": 76809.59999999999,
+    "zysk_oczekiwany": 18862.17979465334,
+    "zysk_5": 26006.399999999994,
+    "zysk_95": 127612.79999999999
+  },
+  "bootstrap": {
+    "opis": "1000 losowań biur snapszotu ze zwracaniem, ziarno 42, przedział 90% (percentyle 5 i 95)",
+    "najlepszy_prog_90": [
+      0.15,
+      0.25
+    ],
+    "najlepszy_prog_mediana": 0.15,
+    "roznica_0_15_minus_top_90": [
+      3780.0000000000427,
+      27720.000000000015
+    ],
+    "udzial_0_15_lepszy_od_top": 0.991,
+    "roznica_0_18_minus_top_90": [
+      -20563.199999999968,
+      28995.119999999988
+    ],
+    "udzial_zysk_dodatni_0_15": 1.0,
+    "udzial_zysk_dodatni_top": 0.992
+  },
+  "prog_0_5": {
+    "prog": 0.5,
+    "wizyty": 0.0,
+    "trafione": 0.0,
+    "zbedne": 0.0,
+    "zysk": 0.0,
+    "zysk_oczekiwany": 0.0,
+    "zysk_5": 0.0,
+    "zysk_95": 0.0
+  },
+  "odejscia_ponad_progiem_0_5": 0,
+  "wrazliwosc": [
+    {
+      "s": 0.2,
+      "V": 18816,
+      "prog_oplacalnosci": 0.33482142857142855,
+      "prog": 0.27,
+      "wizyty": 18,
+      "trafione": 13,
+      "zbedne": 5,
+      "zysk": 26241.600000000002,
+      "zysk_oczekiwany": -769.0739526519124
+    },
+    {
+      "s": 0.2,
+      "V": 29568,
+      "prog_oplacalnosci": 0.2130681818181818,
+      "prog": 0.15,
+      "wizyty": 46,
+      "trafione": 21,
+      "zbedne": 25,
+      "zysk": 66225.6,
+      "zysk_oczekiwany": 7718.256968827439
+    },
+    {
+      "s": 0.4,
+      "V": 18816,
+      "prog_oplacalnosci": 0.16741071428571427,
+      "prog": 0.15,
+      "wizyty": 46,
+      "trafione": 21,
+      "zbedne": 25,
+      "zysk": 100094.40000000002,
+      "zysk_oczekiwany": 25630.508869416743
+    },
+    {
+      "s": 0.4,
+      "V": 29568,
+      "prog_oplacalnosci": 0.1065340909090909,
+      "prog": 0.15,
+      "wizyty": 46,
+      "trafione": 21,
+      "zbedne": 25,
+      "zysk": 190411.2,
+      "zysk_oczekiwany": 73396.51393765489
+    }
+  ],
+  "po_snapszotach": [
+    {
+      "t0": "2025-10-01",
+      "biura": 1387,
+      "odejscia": 50,
+      "najlepszy_prog": 0.14,
+      "wizyty": 62,
+      "trafione": 21,
+      "zysk": 74289.59999999999,
+      "zysk_prog_0_174": 59723.999999999985,
+      "top_trafione": 19,
+      "top_zysk": 62294.399999999994,
+      "top_prog_p": 0.14352111541191243
+    },
+    {
+      "t0": "2025-11-01",
+      "biura": 1389,
+      "odejscia": 50,
+      "najlepszy_prog": 0.11,
+      "wizyty": 82,
+      "trafione": 22,
+      "zysk": 56347.19999999998,
+      "zysk_prog_0_174": 56246.399999999994,
+      "top_trafione": 18,
+      "top_zysk": 55036.79999999999,
+      "top_prog_p": 0.13350012355194185
+    },
+    {
+      "t0": "2025-12-01",
+      "biura": 1403,
+      "odejscia": 54,
+      "najlepszy_prog": 0.29,
+      "wizyty": 21,
+      "trafione": 9,
+      "zysk": 38858.399999999994,
+      "zysk_prog_0_174": 32608.79999999999,
+      "top_trafione": 15,
+      "top_zysk": 33263.999999999985,
+      "top_prog_p": 0.147584894901931
+    },
+    {
+      "t0": "2026-01-01",
+      "biura": 1393,
+      "odejscia": 49,
+      "najlepszy_prog": 0.15,
+      "wizyty": 62,
+      "trafione": 18,
+      "zysk": 52516.79999999999,
+      "zysk_prog_0_174": 44603.999999999985,
+      "top_trafione": 17,
+      "top_zysk": 47779.2,
+      "top_prog_p": 0.1572470538541101
+    },
+    {
+      "t0": "2026-02-01",
+      "biura": 1399,
+      "odejscia": 48,
+      "najlepszy_prog": 0.18,
+      "wizyty": 35,
+      "trafione": 14,
+      "zysk": 57506.399999999994,
+      "zysk_prog_0_174": 52466.399999999994,
+      "top_trafione": 17,
+      "top_zysk": 47779.2,
+      "top_prog_p": 0.1367307856714619
+    },
+    {
+      "t0": "2026-03-01",
+      "biura": 1397,
+      "odejscia": 46,
+      "najlepszy_prog": 0.13,
+      "wizyty": 50,
+      "trafione": 19,
+      "zysk": 74894.4,
+      "zysk_prog_0_174": 54028.79999999999,
+      "top_trafione": 19,
+      "top_zysk": 62294.399999999994,
+      "top_prog_p": 0.11600837842359091
+    },
+    {
+      "t0": "2026-04-01",
+      "biura": 1401,
+      "odejscia": 49,
+      "najlepszy_prog": 0.15,
+      "wizyty": 46,
+      "trafione": 21,
+      "zysk": 94449.59999999999,
+      "zysk_prog_0_174": 81799.2,
+      "top_trafione": 21,
+      "top_zysk": 76809.59999999999,
+      "top_prog_p": 0.12702246155000194
+    }
+  ],
+  "prog_czy_budzet": {
+    "prog": 0.15,
+    "budzet_wizyt": 60,
+    "C": {
+      "C": 1260,
+      "snapszoty": [
+        {
+          "t0": "2025-10-01",
+          "wizyty_prog": 54,
+          "trafione_prog": 18,
+          "zysk_prog": 62596.79999999999,
+          "trafione_budzet": 19,
+          "zysk_budzet": 62294.399999999994,
+          "dodatkowe_wizyty": 6,
+          "dodatkowe_trafione": 1,
+          "dodatkowe_zysk": -302.3999999999942,
+          "dodatkowe_zysk_oczekiwany": -1186.6575302289116,
+          "dodatkowe_p": [
+            0.14352111541191243,
+            0.14942261556244704
+          ]
+        },
+        {
+          "t0": "2025-11-01",
+          "wizyty_prog": 48,
+          "trafione_prog": 16,
+          "zysk_prog": 55641.59999999999,
+          "trafione_budzet": 18,
+          "zysk_budzet": 55036.79999999999,
+          "dodatkowe_wizyty": 12,
+          "dodatkowe_trafione": 2,
+          "dodatkowe_zysk": -604.8000000000029,
+          "dodatkowe_zysk_oczekiwany": -2844.7500953433373,
+          "dodatkowe_p": [
+            0.13350012355194185,
+            0.1479007917386323
+          ]
+        },
+        {
+          "t0": "2025-12-01",
+          "wizyty_prog": 58,
+          "trafione_prog": 15,
+          "zysk_prog": 35783.999999999985,
+          "trafione_budzet": 15,
+          "zysk_budzet": 33263.999999999985,
+          "dodatkowe_wizyty": 2,
+          "dodatkowe_trafione": 0,
+          "dodatkowe_zysk": -2520.0,
+          "dodatkowe_zysk_oczekiwany": -369.7979797745261,
+          "dodatkowe_p": [
+            0.147584894901931,
+            0.1486841224351328
+          ]
+        },
+        {
+          "t0": "2026-01-01",
+          "wizyty_prog": 60,
+          "trafione_prog": 17,
+          "zysk_prog": 47779.2,
+          "trafione_budzet": 17,
+          "zysk_budzet": 47779.2,
+          "dodatkowe_wizyty": 0,
+          "dodatkowe_trafione": 0,
+          "dodatkowe_zysk": 0.0,
+          "dodatkowe_zysk_oczekiwany": 0.0,
+          "dodatkowe_p": null
+        },
+        {
+          "t0": "2026-02-01",
+          "wizyty_prog": 49,
+          "trafione_prog": 14,
+          "zysk_prog": 39866.399999999994,
+          "trafione_budzet": 17,
+          "zysk_budzet": 47779.2,
+          "dodatkowe_wizyty": 11,
+          "dodatkowe_trafione": 3,
+          "dodatkowe_zysk": 7912.800000000003,
+          "dodatkowe_zysk_oczekiwany": -2503.1420147311046,
+          "dodatkowe_p": [
+            0.1367307856714619,
+            0.14781807681480896
+          ]
+        },
+        {
+          "t0": "2026-03-01",
+          "wizyty_prog": 39,
+          "trafione_prog": 15,
+          "zysk_prog": 59723.999999999985,
+          "trafione_budzet": 19,
+          "zysk_budzet": 62294.399999999994,
+          "dodatkowe_wizyty": 21,
+          "dodatkowe_trafione": 4,
+          "dodatkowe_zysk": 2570.4000000000087,
+          "dodatkowe_zysk_oczekiwany": -6185.107185292856,
+          "dodatkowe_p": [
+            0.11600837842359091,
+            0.14899773447975992
+          ]
+        },
+        {
+          "t0": "2026-04-01",
+          "wizyty_prog": 46,
+          "trafione_prog": 21,
+          "zysk_prog": 94449.59999999999,
+          "trafione_budzet": 21,
+          "zysk_budzet": 76809.59999999999,
+          "dodatkowe_wizyty": 14,
+          "dodatkowe_trafione": 0,
+          "dodatkowe_zysk": -17640.0,
+          "dodatkowe_zysk_oczekiwany": -3782.9537579985054,
+          "dodatkowe_p": [
+            0.12702246155000194,
+            0.14724550106042808
+          ]
+        }
+      ],
+      "suma": {
+        "wizyty_prog": 354,
+        "trafione_prog": 116,
+        "zysk_prog": 395841.5999999999,
+        "trafione_budzet": 126,
+        "zysk_budzet": 385257.6,
+        "dodatkowe_wizyty": 66,
+        "dodatkowe_trafione": 10,
+        "dodatkowe_zysk": -10583.999999999985,
+        "dodatkowe_zysk_oczekiwany": -16872.40856336924
+      },
+      "na_dodatkowa_wizyte": -160.36363636363615,
+      "na_dodatkowa_wizyte_oczekiwany": -255.64255399044305,
+      "na_dodatkowa_wizyte_90": [
+        -586.7005123868946,
+        465.19827208118613
+      ],
+      "odsetek_trafionych_dodatkowych": 0.15151515151515152,
+      "prog_oplacalnosci": 0.17361111111111113
+    },
+    "C_rabat": {
+      "C": 960,
+      "snapszoty": [
+        {
+          "t0": "2025-10-01",
+          "wizyty_prog": 54,
+          "trafione_prog": 18,
+          "zysk_prog": 78796.79999999999,
+          "trafione_budzet": 19,
+          "zysk_budzet": 80294.4,
+          "dodatkowe_wizyty": 6,
+          "dodatkowe_trafione": 1,
+          "dodatkowe_zysk": 1497.6000000000058,
+          "dodatkowe_zysk_oczekiwany": 613.3424697710884,
+          "dodatkowe_p": [
+            0.14352111541191243,
+            0.14942261556244704
+          ]
+        },
+        {
+          "t0": "2025-11-01",
+          "wizyty_prog": 48,
+          "trafione_prog": 16,
+          "zysk_prog": 70041.59999999999,
+          "trafione_budzet": 18,
+          "zysk_budzet": 73036.79999999999,
+          "dodatkowe_wizyty": 12,
+          "dodatkowe_trafione": 2,
+          "dodatkowe_zysk": 2995.199999999997,
+          "dodatkowe_zysk_oczekiwany": 755.2499046566622,
+          "dodatkowe_p": [
+            0.13350012355194185,
+            0.1479007917386323
+          ]
+        },
+        {
+          "t0": "2025-12-01",
+          "wizyty_prog": 58,
+          "trafione_prog": 15,
+          "zysk_prog": 53183.999999999985,
+          "trafione_budzet": 15,
+          "zysk_budzet": 51263.999999999985,
+          "dodatkowe_wizyty": 2,
+          "dodatkowe_trafione": 0,
+          "dodatkowe_zysk": -1920.0,
+          "dodatkowe_zysk_oczekiwany": 230.20202022547392,
+          "dodatkowe_p": [
+            0.147584894901931,
+            0.1486841224351328
+          ]
+        },
+        {
+          "t0": "2026-01-01",
+          "wizyty_prog": 60,
+          "trafione_prog": 17,
+          "zysk_prog": 65779.2,
+          "trafione_budzet": 17,
+          "zysk_budzet": 65779.2,
+          "dodatkowe_wizyty": 0,
+          "dodatkowe_trafione": 0,
+          "dodatkowe_zysk": 0.0,
+          "dodatkowe_zysk_oczekiwany": 0.0,
+          "dodatkowe_p": null
+        },
+        {
+          "t0": "2026-02-01",
+          "wizyty_prog": 49,
+          "trafione_prog": 14,
+          "zysk_prog": 54566.399999999994,
+          "trafione_budzet": 17,
+          "zysk_budzet": 65779.2,
+          "dodatkowe_wizyty": 11,
+          "dodatkowe_trafione": 3,
+          "dodatkowe_zysk": 11212.800000000003,
+          "dodatkowe_zysk_oczekiwany": 796.8579852688955,
+          "dodatkowe_p": [
+            0.1367307856714619,
+            0.14781807681480896
+          ]
+        },
+        {
+          "t0": "2026-03-01",
+          "wizyty_prog": 39,
+          "trafione_prog": 15,
+          "zysk_prog": 71423.99999999999,
+          "trafione_budzet": 19,
+          "zysk_budzet": 80294.4,
+          "dodatkowe_wizyty": 21,
+          "dodatkowe_trafione": 4,
+          "dodatkowe_zysk": 8870.400000000009,
+          "dodatkowe_zysk_oczekiwany": 114.89281470714332,
+          "dodatkowe_p": [
+            0.11600837842359091,
+            0.14899773447975992
+          ]
+        },
+        {
+          "t0": "2026-04-01",
+          "wizyty_prog": 46,
+          "trafione_prog": 21,
+          "zysk_prog": 108249.59999999998,
+          "trafione_budzet": 21,
+          "zysk_budzet": 94809.59999999998,
+          "dodatkowe_wizyty": 14,
+          "dodatkowe_trafione": 0,
+          "dodatkowe_zysk": -13440.0,
+          "dodatkowe_zysk_oczekiwany": 417.0462420014949,
+          "dodatkowe_p": [
+            0.12702246155000194,
+            0.14724550106042808
+          ]
+        }
+      ],
+      "suma": {
+        "wizyty_prog": 354,
+        "trafione_prog": 116,
+        "zysk_prog": 502041.5999999999,
+        "trafione_budzet": 126,
+        "zysk_budzet": 511257.5999999999,
+        "dodatkowe_wizyty": 66,
+        "dodatkowe_trafione": 10,
+        "dodatkowe_zysk": 9216.000000000015,
+        "dodatkowe_zysk_oczekiwany": 2927.5914366307584
+      },
+      "na_dodatkowa_wizyte": 139.63636363636385,
+      "na_dodatkowa_wizyte_oczekiwany": 44.357446009556945,
+      "na_dodatkowa_wizyte_90": [
+        -286.7005123868946,
+        765.1982720811861
+      ],
+      "odsetek_trafionych_dodatkowych": 0.15151515151515152,
+      "prog_oplacalnosci": 0.1322751322751323
+    }
+  },
+  "tornado": {
+    "prog": 0.15,
+    "baza": {
+      "s": 0.3,
+      "V": 24192,
+      "prog_oplacalnosci": 0.17361111111111113,
+      "zysk": 56548.79999999999,
+      "wizyty": 50.57142857142857,
+      "zysk_dopasowany": 54496.79999999999,
+      "wizyty_dopasowany": 39.857142857142854
+    },
+    "parametry": {
+      "s": {
+        "dol": {
+          "s": 0.2,
+          "V": 24192,
+          "prog_oplacalnosci": 0.26041666666666663,
+          "zysk": 16459.200000000008,
+          "wizyty": 50.57142857142857,
+          "zysk_dopasowany": 19548.000000000007,
+          "wizyty_dopasowany": 20.142857142857142
+        },
+        "gora": {
+          "s": 0.4,
+          "V": 24192,
+          "prog_oplacalnosci": 0.13020833333333331,
+          "zysk": 96638.40000000002,
+          "wizyty": 50.57142857142857,
+          "zysk_dopasowany": 101102.40000000001,
+          "wizyty_dopasowany": 58.0
+        },
+        "rozpietosc": 80179.20000000001
+      },
+      "V": {
+        "dol": {
+          "s": 0.3,
+          "V": 18000,
+          "prog_oplacalnosci": 0.23333333333333334,
+          "zysk": 25765.714285714286,
+          "wizyty": 50.57142857142857,
+          "zysk_dopasowany": 27308.571428571428,
+          "wizyty_dopasowany": 24.857142857142858
+        },
+        "gora": {
+          "s": 0.3,
+          "V": 30000,
+          "prog_oplacalnosci": 0.14,
+          "zysk": 85422.85714285714,
+          "wizyty": 50.57142857142857,
+          "zysk_dopasowany": 87197.14285714286,
+          "wizyty_dopasowany": 55.285714285714285
+        },
+        "rozpietosc": 59657.142857142855
+      }
+    },
+    "oba": {
+      "dol": {
+        "s": 0.2,
+        "V": 18000,
+        "prog_oplacalnosci": 0.35,
+        "zysk": -4062.8571428571427,
+        "wizyty": 50.57142857142857,
+        "zysk_dopasowany": 4474.285714285715,
+        "wizyty_dopasowany": 8.285714285714286
+      },
+      "gora": {
+        "s": 0.4,
+        "V": 30000,
+        "prog_oplacalnosci": 0.105,
+        "zysk": 135137.14285714287,
+        "wizyty": 50.57142857142857,
+        "zysk_dopasowany": 140400.0,
+        "wizyty_dopasowany": 60.0
+      }
+    }
+  },
+  "krzywa": [
+    {
+      "prog": 0.01,
+      "wizyty": 1185,
+      "trafione": 48,
+      "zbedne": 1137,
+      "zysk": -1144735.2,
+      "zysk_oczekiwany": -1112470.55,
+      "zysk_5": -1224951.84,
+      "zysk_95": -1060164.0
+    },
+    {
+      "prog": 0.02,
+      "wizyty": 785,
+      "trafione": 42,
+      "zbedne": 743,
+      "zysk": -684280.8,
+      "zysk_oczekiwany": -651489.32,
+      "zysk_5": -763761.6,
+      "zysk_95": -603731.52
+    },
+    {
+      "prog": 0.03,
+      "wizyty": 539,
+      "trafione": 40,
+      "zbedne": 499,
+      "zysk": -388836.0,
+      "zysk_oczekiwany": -386026.96,
+      "zysk_5": -463276.8,
+      "zysk_95": -314793.36
+    },
+    {
+      "prog": 0.04,
+      "wizyty": 379,
+      "trafione": 32,
+      "zbedne": 347,
+      "zysk": -245296.8,
+      "zysk_oczekiwany": -224186.93,
+      "zysk_5": -313147.8,
+      "zysk_95": -182836.08
+    },
+    {
+      "prog": 0.05,
+      "wizyty": 286,
+      "trafione": 30,
+      "zbedne": 256,
+      "zysk": -142632.0,
+      "zysk_oczekiwany": -136931.82,
+      "zysk_5": -209512.8,
+      "zysk_95": -84205.8
+    },
+    {
+      "prog": 0.06,
+      "wizyty": 233,
+      "trafione": 28,
+      "zbedne": 205,
+      "zysk": -90367.2,
+      "zysk_oczekiwany": -91162.59,
+      "zysk_5": -153117.72,
+      "zysk_95": -33553.8
+    },
+    {
+      "prog": 0.07,
+      "wizyty": 186,
+      "trafione": 25,
+      "zbedne": 161,
+      "zysk": -52920.0,
+      "zysk_oczekiwany": -53933.91,
+      "zysk_5": -109080.72,
+      "zysk_95": 2923.2
+    },
+    {
+      "prog": 0.08,
+      "wizyty": 156,
+      "trafione": 25,
+      "zbedne": 131,
+      "zysk": -15120.0,
+      "zysk_oczekiwany": -32345.41,
+      "zysk_5": -69703.2,
+      "zysk_95": 38281.32
+    },
+    {
+      "prog": 0.09,
+      "wizyty": 131,
+      "trafione": 25,
+      "zbedne": 106,
+      "zysk": 16380.0,
+      "zysk_oczekiwany": -16152.0,
+      "zysk_5": -37611.0,
+      "zysk_95": 70406.28
+    },
+    {
+      "prog": 0.1,
+      "wizyty": 105,
+      "trafione": 22,
+      "zbedne": 83,
+      "zysk": 27367.2,
+      "zysk_oczekiwany": -1191.03,
+      "zysk_5": -21571.2,
+      "zysk_95": 76925.52
+    },
+    {
+      "prog": 0.11,
+      "wizyty": 83,
+      "trafione": 22,
+      "zbedne": 61,
+      "zysk": 55087.2,
+      "zysk_oczekiwany": 9812.1,
+      "zysk_5": 6166.44,
+      "zysk_95": 104630.4
+    },
+    {
+      "prog": 0.12,
+      "wizyty": 70,
+      "trafione": 22,
+      "zbedne": 48,
+      "zysk": 71467.2,
+      "zysk_oczekiwany": 15285.14,
+      "zysk_5": 23486.4,
+      "zysk_95": 120708.0
+    },
+    {
+      "prog": 0.13,
+      "wizyty": 56,
+      "trafione": 21,
+      "zbedne": 35,
+      "zysk": 81849.6,
+      "zysk_oczekiwany": 20195.29,
+      "zysk_5": 37044.0,
+      "zysk_95": 125763.12
+    },
+    {
+      "prog": 0.14,
+      "wizyty": 50,
+      "trafione": 21,
+      "zbedne": 29,
+      "zysk": 89409.6,
+      "zysk_oczekiwany": 21793.47,
+      "zysk_5": 44588.88,
+      "zysk_95": 133927.92
+    },
+    {
+      "prog": 0.15,
+      "wizyty": 46,
+      "trafione": 21,
+      "zbedne": 25,
+      "zysk": 94449.6,
+      "zysk_oczekiwany": 22645.13,
+      "zysk_5": 48973.68,
+      "zysk_95": 137995.2
+    },
+    {
+      "prog": 0.16,
+      "wizyty": 41,
+      "trafione": 19,
+      "zbedne": 22,
+      "zysk": 86234.4,
+      "zysk_oczekiwany": 23205.98,
+      "zysk_5": 42353.64,
+      "zysk_95": 128217.6
+    },
+    {
+      "prog": 0.17,
+      "wizyty": 35,
+      "trafione": 18,
+      "zbedne": 17,
+      "zysk": 86536.8,
+      "zysk_oczekiwany": 23482.27,
+      "zysk_5": 43293.6,
+      "zysk_95": 127260.0
+    },
+    {
+      "prog": 0.18,
+      "wizyty": 32,
+      "trafione": 17,
+      "zbedne": 15,
+      "zysk": 83059.2,
+      "zysk_oczekiwany": 23518.67,
+      "zysk_5": 42033.6,
+      "zysk_95": 122872.68
+    },
+    {
+      "prog": 0.19,
+      "wizyty": 29,
+      "trafione": 15,
+      "zbedne": 14,
+      "zysk": 72324.0,
+      "zysk_oczekiwany": 23312.3,
+      "zysk_5": 31585.68,
+      "zysk_95": 108324.72
+    },
+    {
+      "prog": 0.2,
+      "wizyty": 26,
+      "trafione": 14,
+      "zbedne": 12,
+      "zysk": 68846.4,
+      "zysk_oczekiwany": 22823.38,
+      "zysk_5": 31888.08,
+      "zysk_95": 103907.16
+    },
+    {
+      "prog": 0.21,
+      "wizyty": 24,
+      "trafione": 14,
+      "zbedne": 10,
+      "zysk": 71366.4,
+      "zysk_oczekiwany": 22341.56,
+      "zysk_5": 34072.92,
+      "zysk_95": 107352.0
+    },
+    {
+      "prog": 0.22,
+      "wizyty": 24,
+      "trafione": 14,
+      "zbedne": 10,
+      "zysk": 71366.4,
+      "zysk_oczekiwany": 22341.56,
+      "zysk_5": 34072.92,
+      "zysk_95": 107352.0
+    },
+    {
+      "prog": 0.23,
+      "wizyty": 23,
+      "trafione": 14,
+      "zbedne": 9,
+      "zysk": 72626.4,
+      "zysk_oczekiwany": 21956.52,
+      "zysk_5": 35380.8,
+      "zysk_95": 108612.0
+    },
+    {
+      "prog": 0.24,
+      "wizyty": 21,
+      "trafione": 13,
+      "zbedne": 8,
+      "zysk": 67888.8,
+      "zysk_oczekiwany": 21078.66,
+      "zysk_5": 31903.2,
+      "zysk_95": 101689.56
+    },
+    {
+      "prog": 0.25,
+      "wizyty": 18,
+      "trafione": 13,
+      "zbedne": 5,
+      "zysk": 71668.8,
+      "zysk_oczekiwany": 19576.79,
+      "zysk_5": 37852.92,
+      "zysk_95": 105484.68
+    },
+    {
+      "prog": 0.26,
+      "wizyty": 18,
+      "trafione": 13,
+      "zbedne": 5,
+      "zysk": 71668.8,
+      "zysk_oczekiwany": 19576.79,
+      "zysk_5": 37852.92,
+      "zysk_95": 105484.68
+    },
+    {
+      "prog": 0.27,
+      "wizyty": 18,
+      "trafione": 13,
+      "zbedne": 5,
+      "zysk": 71668.8,
+      "zysk_oczekiwany": 19576.79,
+      "zysk_5": 37852.92,
+      "zysk_95": 105484.68
+    },
+    {
+      "prog": 0.28,
+      "wizyty": 15,
+      "trafione": 11,
+      "zbedne": 4,
+      "zysk": 60933.6,
+      "zysk_oczekiwany": 17357.59,
+      "zysk_5": 29622.6,
+      "zysk_95": 93441.6
+    },
+    {
+      "prog": 0.29,
+      "wizyty": 13,
+      "trafione": 9,
+      "zbedne": 4,
+      "zysk": 48938.4,
+      "zysk_oczekiwany": 15721.41,
+      "zysk_5": 19908.0,
+      "zysk_95": 77666.4
+    },
+    {
+      "prog": 0.3,
+      "wizyty": 13,
+      "trafione": 9,
+      "zbedne": 4,
+      "zysk": 48938.4,
+      "zysk_oczekiwany": 15721.41,
+      "zysk_5": 19908.0,
+      "zysk_95": 77666.4
+    },
+    {
+      "prog": 0.31,
+      "wizyty": 11,
+      "trafione": 7,
+      "zbedne": 4,
+      "zysk": 36943.2,
+      "zysk_oczekiwany": 13819.09,
+      "zysk_5": 12952.8,
+      "zysk_95": 64411.2
+    },
+    {
+      "prog": 0.32,
+      "wizyty": 9,
+      "trafione": 7,
+      "zbedne": 2,
+      "zysk": 39463.2,
+      "zysk_oczekiwany": 11747.31,
+      "zysk_5": 15472.8,
+      "zysk_95": 65973.6
+    },
+    {
+      "prog": 0.33,
+      "wizyty": 6,
+      "trafione": 5,
+      "zbedne": 1,
+      "zysk": 28728.0,
+      "zysk_oczekiwany": 8457.84,
+      "zysk_5": 9475.2,
+      "zysk_95": 52718.4
+    },
+    {
+      "prog": 0.34,
+      "wizyty": 4,
+      "trafione": 4,
+      "zbedne": 0,
+      "zysk": 23990.4,
+      "zysk_oczekiwany": 6177.54,
+      "zysk_5": 5997.6,
+      "zysk_95": 41983.2
+    },
+    {
+      "prog": 0.35,
+      "wizyty": 4,
+      "trafione": 4,
+      "zbedne": 0,
+      "zysk": 23990.4,
+      "zysk_oczekiwany": 6177.54,
+      "zysk_5": 5997.6,
+      "zysk_95": 41983.2
+    },
+    {
+      "prog": 0.36,
+      "wizyty": 3,
+      "trafione": 3,
+      "zbedne": 0,
+      "zysk": 17992.8,
+      "zysk_oczekiwany": 4842.77,
+      "zysk_5": 5997.6,
+      "zysk_95": 35985.6
+    },
+    {
+      "prog": 0.37,
+      "wizyty": 3,
+      "trafione": 3,
+      "zbedne": 0,
+      "zysk": 17992.8,
+      "zysk_oczekiwany": 4842.77,
+      "zysk_5": 5997.6,
+      "zysk_95": 35985.6
+    },
+    {
+      "prog": 0.38,
+      "wizyty": 3,
+      "trafione": 3,
+      "zbedne": 0,
+      "zysk": 17992.8,
+      "zysk_oczekiwany": 4842.77,
+      "zysk_5": 5997.6,
+      "zysk_95": 35985.6
+    },
+    {
+      "prog": 0.39,
+      "wizyty": 1,
+      "trafione": 1,
+      "zbedne": 0,
+      "zysk": 5997.6,
+      "zysk_oczekiwany": 1788.72,
+      "zysk_5": 0.0,
+      "zysk_95": 17992.8
+    },
+    {
+      "prog": 0.4,
+      "wizyty": 1,
+      "trafione": 1,
+      "zbedne": 0,
+      "zysk": 5997.6,
+      "zysk_oczekiwany": 1788.72,
+      "zysk_5": 0.0,
+      "zysk_95": 17992.8
+    },
+    {
+      "prog": 0.41,
+      "wizyty": 1,
+      "trafione": 1,
+      "zbedne": 0,
+      "zysk": 5997.6,
+      "zysk_oczekiwany": 1788.72,
+      "zysk_5": 0.0,
+      "zysk_95": 17992.8
+    },
+    {
+      "prog": 0.42,
+      "wizyty": 1,
+      "trafione": 1,
+      "zbedne": 0,
+      "zysk": 5997.6,
+      "zysk_oczekiwany": 1788.72,
+      "zysk_5": 0.0,
+      "zysk_95": 17992.8
+    },
+    {
+      "prog": 0.43,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.44,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.45,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.46,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.47,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.48,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.49,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.5,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.51,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.52,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.53,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.54,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.55,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.56,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.57,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.58,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.59,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.6,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.61,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.62,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.63,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.64,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.65,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.66,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.67,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.68,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.69,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.7,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.71,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.72,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.73,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.74,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.75,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.76,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.77,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.78,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.79,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.8,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.81,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.82,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.83,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.84,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.85,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.86,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.87,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.88,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.89,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.9,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.91,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.92,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.93,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.94,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.95,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.96,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.97,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.98,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    },
+    {
+      "prog": 0.99,
+      "wizyty": 0,
+      "trafione": 0,
+      "zbedne": 0,
+      "zysk": 0.0,
+      "zysk_oczekiwany": 0.0,
+      "zysk_5": 0.0,
+      "zysk_95": 0.0
+    }
+  ]
+}
