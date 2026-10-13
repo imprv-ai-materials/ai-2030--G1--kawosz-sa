@@ -225,3 +225,36 @@ Kod: `api/api/contexts_boundaries/retention_bc/prog/krzywa_wartosci.py`. Wynik z
 `krzywa_wartosci.json` obok kodu (cała krzywa, tabele z tego dokumentu) oraz do `docs/img/prog_krzywa_wartosci.png`
 i `docs/img/prog_tornado.png`.
 Biura i etykiety pochodzą z tabeli `cechy_treningowe` w `kawosz.duckdb` (t0 = 2026-04-01, `odejdzie_90d`).
+
+## Kalkulator dla sprzedaży
+
+Strona `/wizyty` w `ui/` liczy to samo dla dowolnych założeń, więc zmiana ceny rabatu nie wymaga nowej analizy.
+Suwaki V, C, s i budżet startują z `retention_bc/zalozenia.yaml`. Po każdej zmianie API (`GET /api/wizyty`,
+`api/api/contexts_boundaries/retention_bc/prog/kalkulator.py`) liczy próg C / (s × V), dzisiejsze biura z
+p ≥ próg (najwyżej budżet), zysk tej listy według modelu, średni zysk tej samej reguły na 7 snapszotach testowych
+i krzywą wartości. Funkcje są te same co w tym dokumencie. Link ze strony zapisuje założenia.
+
+**Grupa kontrolna.** Przełącznik w kalkulatorze odkłada część listy (domyślnie 10%, do 50%) bez wizyty i rabatu.
+Za 90 dni s = 1 − odsetek odejść z wizytą / odsetek odejść bez wizyty. Każde biuro ma w kwartale stały los (skrót
+z kwartału i id_biura, `retention_bc/kontrola.py`), ten sam w kalkulatorze i w poniedziałkowej liście. Zapisem
+eksperymentu jest tabela `lista_wizyt`. Jeden kwartał nie
+wystarczy: przy liście ok. 40 biur i 36% odejść bez wizyty 90% przedział s po kwartale to ok. ±70–80 pp przy 10%
+kontroli i ok. ±55 pp przy 50%. Przy 10% kontroli po dwóch latach zostaje ok. ±25–30 pp. Kalkulator pokazuje ten
+rachunek dla bieżącej listy.
+
+## Poniedziałkowa lista opiekunów
+
+Co poniedziałek o 6:00 Inngest (`kawosz-lista-wizyt`) zapisuje do tabeli `lista_wizyt` listę każdego opiekuna:
+jego biura z p ≥ C / (s × V) od najwyższego p, z wartością wizyty p × s × V − C. Lista ma najwyżej 10 biur (wizyty
+na opiekuna w kwartale z `zalozenia.yaml`) minus wizyty retencyjne u jego biur od początku kwartału. Pomija biura
+po kontakcie retencyjnym w ostatnich 90 dniach. p liczy aktywny model z `current.yaml`
+(`api/api/ai/churn_model/aktywny.py`). Kod: `api/api/contexts_boundaries/retention_bc/radar/lista_tygodnia.py`.
+
+Przy każdym biurze są trzy powody ryzyka prostym językiem (`radar/powody.py`): cechy, które najbardziej podnoszą p.
+Wpływ cechy to spadek p po zastąpieniu jej typową wartością dzisiejszych biur; liczy się tylko przez kontrakt
+modelu (predict_proba i lista cech) i co najmniej 0,5 pp. Opiekuna (`am_id`) nie podajemy jako powodu.
+
+Biura, których los w kwartale wypadł poniżej `udzial_kontroli` z `zalozenia.yaml` (10%), są na liście z grupą
+„kontrola”: bez wizyty i rabatu do końca kwartału. Nie zajmują miejsc opiekuna, a do kontroli trafiają tylko biura
+z zakresu p, w którym opiekun jeszcze jeździ. Za kwartał porównujemy odejścia w 90 dni od pierwszego pojawienia
+się biura w `lista_wizyt` w kwartale.

@@ -25,7 +25,6 @@ Wynik: docs/img/prog_krzywa_wartosci.png i krzywa_wartosci.json obok tego pliku 
     PYTHONPATH=api poetry run python -m api.contexts_boundaries.retention_bc.prog.krzywa_wartosci
 """
 
-import importlib
 import json
 from pathlib import Path
 
@@ -40,7 +39,7 @@ import yaml  # noqa: E402
 from matplotlib.ticker import FuncFormatter  # noqa: E402
 
 from api.adapters.duckdb_conn import connect  # noqa: E402
-from api.ai.churn_model.base import ChurnModel  # noqa: E402
+from api.ai.churn_model.aktywny import wczytaj as aktywny_model  # noqa: E402
 from api.ai.churn_model.kalibracja import wilson  # noqa: E402
 from api.ai.churn_model.ocena_w_czasie import POWTORZENIA_BOOTSTRAP, ZIARNO  # noqa: E402
 from api.ai.churn_model.rejestr import KOLOR_SERII, TEKST, TEKST_DRUGI, TLO  # noqa: E402
@@ -52,7 +51,6 @@ PROG_0_5 = 0.5
 PERCENTYLE = (5, 95)  # przedział 90%
 KORZEN = Path(__file__).parents[5]
 ZALOZENIA = KORZEN / "retention_bc" / "zalozenia.yaml"
-CHURN_MODEL = KORZEN / "api" / "api" / "ai" / "churn_model"
 WYKRES = KORZEN / "docs" / "img" / "prog_krzywa_wartosci.png"
 WYKRES_TORNADO = KORZEN / "docs" / "img" / "prog_tornado.png"
 # Zakresy z pytania sprzedaży (2026-10-13). W zalozenia.yaml: s 0,20–0,40, V 18 816–29 568 zł.
@@ -73,20 +71,12 @@ def zalozenia() -> dict:
         "V": par["V"]["wartosc"],
         "C": par["C"]["wartosc"],
         "budzet_wizyt": par["budzet_wizyt"]["wartosc"],
+        "wizyty_na_opiekuna": par["budzet_wizyt"]["skladniki"]["wizyty_na_opiekuna"]["wartosc"],
+        "udzial_kontroli": par["udzial_kontroli"]["wartosc"],
         "C_rabat": par["C"]["wartosc"] - par["C"]["skladniki"]["koszt_wizyty"]["wartosc"],
         "s_przedzial": par["s"]["przedzial"],
         "V_przedzial": par["V"]["przedzial"],
     }
-
-
-def aktywny_model() -> ChurnModel:
-    """Wersja z current.yaml, wczytana z versions/<wersja>/artefakty."""
-    wersja = yaml.safe_load((CHURN_MODEL / "current.yaml").read_text())["wersja"]
-    pakiet = importlib.import_module(f"api.ai.churn_model.versions.{wersja}")
-    klasa = getattr(pakiet, pakiet.__all__[0])
-    model = klasa.load(CHURN_MODEL / "versions" / wersja / "artefakty")
-    assert model.wersja == wersja, f"current.yaml wskazuje {wersja}, a artefakt to {model.wersja}"
-    return model
 
 
 def wynik_wizyt(p: pd.Series, y: pd.Series, s: float, V: float, C: float) -> dict:

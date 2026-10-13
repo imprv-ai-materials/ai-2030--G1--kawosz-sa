@@ -30,6 +30,15 @@ Ręcznie: zdarzenie `kawosz/psi.uruchom` z `{"t0": "2026-09-28"}`. Wstecz, dla k
 bez serwera Inngest:
 
     PYTHONPATH=api poetry run python -m api.inngest_app --psi-od 2026-01-01 [--psi-do 2026-10-01]
+
+W poniedziałek o 6:00 (po nocy i PSI) lista wizyt dla każdego opiekuna: biura z p ≥ C / (s × V) z aktywnego modelu
+(api/api/contexts_boundaries/retention_bc/radar/lista_tygodnia.py):
+
+    lista-wizyt                                     lista tygodnia z grupą kontrolną → lista_wizyt
+
+Ręcznie: zdarzenie `kawosz/lista-wizyt.uruchom` z `{"t0": "2026-10-05"}`. Bez serwera Inngest:
+
+    PYTHONPATH=api poetry run python -m api.inngest_app --lista 2026-10-05
 """
 
 import argparse
@@ -44,6 +53,7 @@ import inngest
 from api.adapters.duckdb_conn import PROJECT_ROOT, connect
 from api.ai.churn_model import psi as psi_cech
 from api.ai.features import build as cechy_churnu
+from api.contexts_boundaries.retention_bc.radar import lista_tygodnia
 from api.contexts_boundaries.revenue_bc.most import most as most_przychodu
 from api.contexts_boundaries.revenue_bc.przychod import definicja
 from api.data_platform import noc
@@ -53,7 +63,9 @@ CRON = "TZ=Europe/Warsaw 0 3 * * *"
 ZDARZENIE = "kawosz/noc.uruchom"
 CRON_PSI = "TZ=Europe/Warsaw 0 5 * * 1"
 ZDARZENIE_PSI = "kawosz/psi.uruchom"
-# DuckDB ma jednego piszącego: kroki wszystkich funkcji z tym kluczem (noc i PSI) wykonują się po jednym.
+CRON_LISTA = "TZ=Europe/Warsaw 0 6 * * 1"
+ZDARZENIE_LISTA = "kawosz/lista-wizyt.uruchom"
+# DuckDB ma jednego piszącego: kroki wszystkich funkcji z tym kluczem (noc, PSI, lista wizyt) wykonują się po jednym.
 JEDEN_PISZACY = inngest.Concurrency(limit=1, key='"kawosz-duckdb"', scope="env")
 
 client = inngest.Inngest(app_id="kawosz", logger=logging.getLogger("uvicorn"))
@@ -164,8 +176,9 @@ def kawosz_noc(ctx: inngest.ContextSync) -> dict:
 
 
 def tydzien_psi(event: inngest.Event) -> date:
-    """t0 sprawdzania PSI: `t0` ze zdarzenia ręcznego, a z crona dzień uruchomienia (czas polski), czyli cechy na
-    początek tego poniedziałku. Ze zdarzenia, a nie z zegara, więc powtórka po awarii bierze to samo t0."""
+    """t0 sprawdzania PSI i dzień listy wizyt: `t0` ze zdarzenia ręcznego, a z crona dzień uruchomienia (czas
+    polski), czyli cechy na początek tego poniedziałku. Ze zdarzenia, a nie z zegara, więc powtórka po awarii bierze
+    to samo t0."""
     if event.data and event.data.get("t0"):
         return date.fromisoformat(str(event.data["t0"]))
     return datetime.fromtimestamp(event.ts / 1000, STREFA).date()
@@ -223,7 +236,23 @@ def kawosz_psi(ctx: inngest.ContextSync) -> dict:
     return przebieg_psi(tydzien_psi(ctx.event), noc.Ustawienia.z_env(), ctx.step.run)
 
 
-FUNKCJE = [kawosz_noc, kawosz_psi]
+def przebieg_listy(tydzien: date, ust: noc.Ustawienia, krok: Krok = _od_razu) -> dict:
+    """Poniedziałkowa lista wizyt opiekunów na tydzień; `krok` jak w przebieg()."""
+    return krok("lista-wizyt", lista_tygodnia.przygotuj, ust.baza, tydzien)
+
+
+@client.create_function(
+    fn_id="kawosz-lista-wizyt",
+    name="Kawosz: poniedziałkowa lista wizyt opiekunów",
+    trigger=[inngest.TriggerCron(cron=CRON_LISTA), inngest.TriggerEvent(event=ZDARZENIE_LISTA)],
+    concurrency=[JEDEN_PISZACY],
+    retries=3,
+)
+def kawosz_lista_wizyt(ctx: inngest.ContextSync) -> dict:
+    return przebieg_listy(tydzien_psi(ctx.event), noc.Ustawienia.z_env(), ctx.step.run)
+
+
+FUNKCJE = [kawosz_noc, kawosz_psi, kawosz_lista_wizyt]
 
 
 def main() -> None:
@@ -231,11 +260,15 @@ def main() -> None:
     tryb = parser.add_mutually_exclusive_group(required=True)
     tryb.add_argument("--dzien", type=date.fromisoformat, help="noc: dzień dostawy RRRR-MM-DD")
     tryb.add_argument("--psi-od", type=date.fromisoformat, help="PSI dla każdego poniedziałku od tego dnia")
+    tryb.add_argument("--lista", type=date.fromisoformat, help="lista wizyt opiekunów na dzień RRRR-MM-DD")
     parser.add_argument("--psi-do", type=date.fromisoformat, help="ostatni dzień dla --psi-od (domyślnie DZIS)")
     parser.add_argument(
         "--wyslij", action="store_true", help="wyślij zdarzenie do serwera Inngest zamiast liczyć noc w tym procesie"
     )
     args = parser.parse_args()
+    if args.lista:
+        print(json.dumps(przebieg_listy(args.lista, noc.Ustawienia.z_env()), ensure_ascii=False, indent=2))
+        return
     if args.psi_od:
         ust = noc.Ustawienia.z_env()
         for t0 in psi_cech.poniedzialki(args.psi_od, args.psi_do or cechy_churnu.DZIS):

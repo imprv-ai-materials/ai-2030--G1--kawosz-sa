@@ -157,3 +157,20 @@ parametry:
       - „Dodatkowych” w stosunku do czego? Czy bieżące wizyty też mogą służyć ratowaniu biur?
       - Czy 10 wizyt to limit na opiekuna, czy wspólna pula 60?
       - Czy jest też limit złotówkowy na rabaty?
+
+  udzial_kontroli:
+    opis: >-
+      część poniedziałkowej listy wizyt, która losowo nie dostaje wizyty ani rabatu (grupa kontrolna); za kwartał
+      porównujemy odejścia z wizytą i bez niej, żeby zmierzyć s
+    wartosc: 0.10
+    przedzial: [0.05, 0.50]
+    jednostka: udział biur z listy
+    wlasciciel: nieustalony - zaproponował zespół danych; zatwierdzają Marek Wójcik i Anna Lis
+    zrodlo:
+      plik: docs/prog.md
+      cytat: "Przełącznik w kalkulatorze odkłada część listy (domyślnie 10%, do 50%) bez wizyty i rabatu."
+    rachunek: każde biuro trafia do kontroli z prawdopodobieństwem równym udziałowi (retention_bc/kontrola.py)
+    otwarte:
+      - Kto zatwierdza udział i czas trwania eksperymentu? Przy 10% przedział s po kwartale to ok. ±80 pp.
+      - Czy opiekunowie wiedzą, które biura są w kontroli, i czy mogą z nimi rozmawiać bez rabatu?
+      - Co z biurem z kontroli, które samo zgłosi chęć odejścia?

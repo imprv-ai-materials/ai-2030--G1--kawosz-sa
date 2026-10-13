@@ -890,3 +890,192 @@ details > summary {
 .filtr-przewijany .przelacznik button {
   white-space: nowrap;
 }
+
+/* kalkulator wizyt: suwaki założeń */
+.suwaki {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 32px;
+}
+
+@media (max-width: 720px) {
+  .suwaki {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.suwak input[type="range"] {
+  width: 100%;
+  margin: 6px 0 0;
+  accent-color: var(--pos);
+}
+
+.naglowek-suwaka {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.naglowek-suwaka label {
+  font-weight: 600;
+}
+
+.pole-wartosci {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pole-wartosci input {
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  width: 96px;
+  text-align: right;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.pole-wartosci .jednostka {
+  color: var(--muted);
+  font-size: 13px;
+  min-width: 32px;
+}
+
+.skala-suwaka {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.opis-suwaka {
+  margin: 4px 0 0;
+}
+
+.przyciski {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.przycisk-tekstowy:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.stan-przeliczenia {
+  min-height: 20px;
+  margin: 12px 0 0;
+}
+
+.blad-przeliczenia {
+  color: var(--critical-ink);
+}
+
+/* wynik sprzed ostatniej zmiany suwaka: przygaszony, dopóki API nie przeliczy */
+.wynik {
+  transition: opacity 0.15s;
+}
+
+.wynik.nieaktualny {
+  opacity: 0.55;
+}
+
+.klucz-linii.przerywany {
+  background: repeating-linear-gradient(90deg, var(--neutral-bar) 0 5px, transparent 5px 9px);
+}
+
+.tabela-krzywej {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+/* kalkulator wizyt: grupa kontrolna */
+.przelacznik-kontroli {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--grid);
+}
+
+.pole-wyboru {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.pole-wyboru input {
+  margin-top: 4px;
+  accent-color: var(--pos);
+}
+
+.udzial-kontroli {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.udzial-kontroli input {
+  width: 180px;
+  accent-color: var(--pos);
+}
+
+.kafle.kafle-kontroli {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 720px) {
+  .kafle.kafle-kontroli {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+tr.kontrola td {
+  color: var(--muted);
+}
+
+.plakietka-kontroli {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  border: 1px dashed var(--axis);
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+/* kalkulator wizyt: powody ryzyka pod nazwą biura */
+.komorka-biura {
+  min-width: 240px;
+}
+
+.powody {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.powody li {
+  position: relative;
+  padding-left: 12px;
+}
+
+.powody li::before {
+  content: "·";
+  position: absolute;
+  left: 2px;
+  color: var(--muted);
+}
+
+tr.kontrola .powody {
+  color: var(--muted);
+}

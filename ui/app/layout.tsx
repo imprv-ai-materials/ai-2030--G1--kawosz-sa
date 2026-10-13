@@ -18,6 +18,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <nav className="nawigacja" aria-label="Strony">
           <Link href="/">Jakość danych przychodu</Link>
           <Link href="/katalog">Katalog cech</Link>
+          <Link href="/wizyty">Kalkulator wizyt</Link>
         </nav>
         {children}
       </body>

@@ -1,5 +1,5 @@
 """Proces API: funkcje Inngest pod /api/inngest (serwer Inngest woła je stąd), dane panelu jakości i katalogu cech
-dla ui/ i cechy modelu churnu jednego biura.
+dla ui/, kalkulator wizyt opiekunów i cechy modelu churnu jednego biura.
 
     INNGEST_DEV=http://127.0.0.1:8488 PYTHONPATH=api poetry run uvicorn api.main:app --app-dir api --port 8101
 
@@ -15,6 +15,7 @@ import inngest.fast_api
 from api.adapters.duckdb_conn import connect
 from api.ai.features import build as cechy_churnu
 from api.ai.features import katalog
+from api.contexts_boundaries.retention_bc.prog import kalkulator
 from api.data_platform import panel_jakosci
 from api.data_platform.noc import Ustawienia
 from api.inngest_app import FUNKCJE, client
@@ -41,6 +42,25 @@ def katalog_cech() -> dict:
     """Katalog cech: karty z katalog.yaml, modele wyliczone z wersji i ostatnie PSI z psi_cech."""
     try:
         return katalog.dane(Ustawienia.z_env().baza)
+    except duckdb.IOException as e:  # nocny potok trzyma bazę do zapisu
+        raise fastapi.HTTPException(
+            status_code=503, detail="Dane są właśnie aktualizowane przez nocny potok. Spróbuj za kilka minut."
+        ) from e
+
+
+@app.get("/api/wizyty")
+def kalkulator_wizyt(
+    s: float | None = fastapi.Query(None, gt=0, le=1),
+    V: float | None = fastapi.Query(None, gt=0),
+    C: float | None = fastapi.Query(None, ge=0),
+    budzet: int | None = fastapi.Query(None, ge=0),
+    kontrola: float = fastapi.Query(0.0, ge=0, le=0.5),
+) -> dict:
+    """Kalkulator wizyt: próg C / (s × V), dzisiejsze biura do odwiedzenia w budżecie, zysk i krzywa wartości.
+    Brakujące s, V, C i budżet bierze z retention_bc/zalozenia.yaml. kontrola: udział listy losowo bez wizyty
+    (grupa kontrolna do pomiaru skuteczności wizyty)."""
+    try:
+        return kalkulator.dane(Ustawienia.z_env().baza, s, V, C, budzet, kontrola)
     except duckdb.IOException as e:  # nocny potok trzyma bazę do zapisu
         raise fastapi.HTTPException(
             status_code=503, detail="Dane są właśnie aktualizowane przez nocny potok. Spróbuj za kilka minut."
